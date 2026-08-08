@@ -223,11 +223,15 @@
   .goal-card h2{font-family:var(--font-display) !important;font-size:16px !important;font-weight:600 !important;text-transform:none !important;letter-spacing:0 !important;color:var(--ink) !important;border-bottom:none !important;padding-bottom:0 !important;margin-bottom:10px !important;}
   .goal-result-card{border:1.5px solid var(--accent);}
   .goal-result-card h2{font-size:16px;}
-  .goal-table{border-collapse:collapse;width:100%;margin-top:12px;}
-  .goal-table th{text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--ink-muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--border-strong);}
+  .goal-table-scroll{overflow-x:auto;margin-top:12px;border:1px solid var(--border);border-radius:6px;}
+  .goal-table{border-collapse:collapse;width:100%;min-width:340px;}
+  .goal-table th{text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--ink-muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--border-strong);white-space:nowrap;}
   .goal-table th:first-child, .goal-table td:first-child{text-align:left;}
-  .goal-table td{text-align:right;padding:6px 10px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12.5px;border-bottom:1px solid var(--border);}
+  .goal-table td{text-align:right;padding:6px 10px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12.5px;border-bottom:1px solid var(--border);white-space:nowrap;}
   .goal-table tr.row-hit td{background:var(--good-bg);}
+  .goal-table tr:last-child td{border-bottom:none;}
+  .budget-check{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .red-flag{border:1px solid var(--critical);background:var(--critical-bg);border-radius:6px;padding:10px 12px;font-size:12.5px;color:var(--ink);line-height:1.6;margin-top:12px;}
 
   @media (prefers-reduced-motion: reduce){.tooltip{transition:none;}}
 </style>
@@ -242,6 +246,20 @@
   <main class="layout">
     <aside class="inputs" aria-label="Datos de entrada">
       <form id="calc-form">
+        <section class="card goal-card">
+          <h2>🏷️ Tipo de inversión</h2>
+          <div class="mode-toggle" role="tablist">
+            <button type="button" class="mode-btn active" id="mode-rent">Comprar, rentar y vender después</button>
+            <button type="button" class="mode-btn" id="mode-live">Comprar, reparar y vender (flip)</button>
+          </div>
+          <p class="hint" id="mode-note" style="margin-top:8px;">Cobras renta mientras decides cuándo vender — eso ayuda a cubrir el costo mensual mientras esperas el mejor momento.</p>
+          <div class="field" style="margin-top:14px;">
+            <label for="availableCash">Dinero disponible para esta inversión</label>
+            <div class="input-prefix"><span>$</span><input type="number" id="availableCash" min="0" step="1000" value="110000"></div>
+            <span class="hint">Para avisarte si te excedes del presupuesto y cuánto colchón te queda.</span>
+          </div>
+        </section>
+
         <section class="card goal-card">
           <h2>🎯 Tu meta de venta</h2>
           <div class="mode-toggle" role="tablist">
@@ -290,19 +308,9 @@
 
           <label style="font-size:13px;color:var(--ink);display:block;margin-bottom:8px;">Estimador de valor por características <span class="hint" style="display:inline;">(opcional)</span></label>
           <div class="field">
-            <label for="lotM2">Tamaño del <strong>lote</strong> (terreno completo)</label>
-            <div class="input-prefix"><span>ft²</span><input type="number" id="lotM2" min="0" step="100" value="0"></div>
-            <span class="hint">El terreno entero, casa + patio/jardín. En el listing aparece como "Lot Size".</span>
-          </div>
-          <div class="field">
             <label for="houseM2">Tamaño de la <strong>casa construida</strong></label>
             <div class="input-prefix"><span>ft²</span><input type="number" id="houseM2" min="0" step="50" value="0"></div>
-            <span class="hint">Solo el área habitable bajo techo (siempre es menor que el lote). En el listing aparece como "Living Area" o "Square Footage".</span>
-          </div>
-          <div class="field">
-            <label for="zipCode">Zip code <span class="hint" style="display:inline">(solo referencia)</span></label>
-            <input type="text" id="zipCode" class="plain-input" placeholder="Ej. 33101" inputmode="numeric" maxlength="10">
-            <span class="hint">No lo uso para calcular — no tengo una base de datos real por zip code, y prefiero no inventarte un número que parezca preciso sin serlo. Búscalo tú: en Zillow/Redfin filtra por tu zip, mira ventas recientes, y anota el "Price per sqft" — ponlo abajo.</span>
+            <span class="hint">Solo el área habitable bajo techo. En el listing aparece como "Living Area" o "Square Footage" — es el dato que más importa para el valor.</span>
           </div>
           <div class="field">
             <label for="zonePreset">Punto de partida rápido <span class="hint" style="display:inline">(opcional, editable después)</span></label>
@@ -314,13 +322,9 @@
             </select>
           </div>
           <div class="field">
-            <label for="houseRatePerSqft">$/sqft de la casa en tu zip</label>
+            <label for="houseRatePerSqft">$/sqft de la casa en tu zona</label>
             <div class="input-prefix"><span>$</span><input type="number" id="houseRatePerSqft" min="0" step="5" value="180"></div>
-            <span class="hint">El número que más importa — de esto depende casi todo el estimado.</span>
-          </div>
-          <div class="field">
-            <label for="lotRatePerSqft">$/sqft del lote (terreno) en tu zip</label>
-            <div class="input-prefix"><span>$</span><input type="number" id="lotRatePerSqft" min="0" step="1" value="12"></div>
+            <span class="hint">El número que más importa — de esto depende casi todo el estimado. Sácalo de Zillow/Redfin (ventas recientes cerca de ti).</span>
           </div>
           <div class="field">
             <div class="unit-row-fields">
@@ -340,9 +344,9 @@
             <div class="valuation-box">
               <div class="stat-label">Valor estimado</div>
               <div class="valuation-value muted" id="valuation-value">Ingresa los pies² para ver una estimación</div>
-              <button type="button" class="use-estimate-btn" id="use-estimate-btn" disabled>Usar como valor de reventa objetivo (ARV) →</button>
+              <button type="button" class="use-estimate-btn" id="use-estimate-btn" disabled>Usar como precio de venta en "Tu meta" →</button>
             </div>
-            <span class="hint">= ($/sqft de la casa × área × ajuste por material y condición) + ($/sqft del lote × área del lote). Tan preciso como los $/sqft que pongas arriba — si dejas los defaults, es solo un placeholder.</span>
+            <span class="hint">= $/sqft de la casa × área × ajuste por material y condición. Tan preciso como el $/sqft que pongas arriba.</span>
           </div>
 
           <div class="field" style="margin-top:4px;">
@@ -353,16 +357,6 @@
             <div class="field-head"><label for="remodelRoiPct">¿Cuánto de eso se recupera al vender?</label><output id="remodelRoiPct-val">70%</output></div>
             <input type="range" id="remodelRoiPct" min="0" max="120" step="5" value="70">
             <span class="hint">Casi ninguna remodelación devuelve el 100%. Ejemplo con 70%: gastas $10,000 en arreglos → el valor de la casa sube $7,000, no $10,000 — los otros $3,000 son gusto personal, no inversión recuperable.</span>
-          </div>
-          <div class="field">
-            <div class="field-head"><label for="marginPct">Margen de ganancia deseado</label><output id="marginPct-val">20%</output></div>
-            <input type="range" id="marginPct" min="0" max="50" step="1" value="20">
-            <span class="hint">% sobre el precio de compra</span>
-          </div>
-          <div class="field">
-            <label for="arvTarget">Valor de reventa objetivo (ARV)</label>
-            <div class="input-prefix"><span>$</span><input type="number" id="arvTarget" min="0" step="1000" value="400000"></div>
-            <span class="hint">Usa el botón de arriba para copiar el valor estimado, o pon el precio que crees que pedirías al vender.</span>
           </div>
         </section>
 
@@ -387,22 +381,12 @@
         </section>
 
         <section class="card">
-          <h2>4 · Uso y renta</h2>
-          <div class="mode-toggle" role="tablist">
-            <button type="button" class="mode-btn active" data-mode="rent" id="mode-rent">Propiedad de renta</button>
-            <button type="button" class="mode-btn" data-mode="live" id="mode-live">Vivienda (no se renta)</button>
-          </div>
-          <p class="live-note" id="live-note">Modo vivienda: no se genera renta. La hipoteca, el property tax, el seguro y el mantenimiento se restan directamente como costo de tenencia — solo la apreciación y el pago de principal generan valor.</p>
+          <h2>4 · Renta y tenencia</h2>
           <div class="field rent-only">
             <label>Unidades de la propiedad</label>
             <div id="units-list"></div>
             <button type="button" id="add-unit" class="add-unit-btn">+ Agregar unidad</button>
             <span class="hint">Solo las unidades en estado "Pagando" cuentan como renta real. Las demás se muestran como potencial.</span>
-          </div>
-          <div class="field rent-only">
-            <label for="lossTargetDate">Proyectar pérdida hasta</label>
-            <input type="date" id="lossTargetDate">
-            <span class="hint">Fecha límite para estimar cuánto más se perdería en renta no cobrada si una unidad sigue vacía u ocupada sin pagar.</span>
           </div>
           <div class="field rent-only">
             <div class="field-head"><label for="cashReservePct">Reserva vacancia/mantenimiento (cash flow de hoy)</label><output id="cashReservePct-val">13%</output></div>
@@ -475,11 +459,6 @@
         <div id="cashflow-body"></div>
       </div>
 
-      <div class="card" id="flip-card">
-        <h2>Presupuesto de remodelación y margen de flip</h2>
-        <div id="flip-body"></div>
-      </div>
-
       <div class="card chart-card">
         <h2>Retorno acumulado: nominal vs. real</h2>
         <p class="sub">Ganancia neta si vendieras ese año, dividida entre tu down payment. La línea punteada marca 100% — duplicar tu dinero. El diamante verde marca el año óptimo.</p>
@@ -528,7 +507,7 @@
       </div>
 
       <p class="assumptions">
-        <strong>Supuestos del modelo —</strong> el property tax se calcula como % fijo sobre el precio de compra; el seguro y el HOA se mantienen constantes; en modo vivienda el mantenimiento se calcula como % del valor de la propiedad ese año (no de la renta). La proyección de 10-40 años y el año óptimo usan solo la renta <strong>real</strong> (unidades en estado "Pagando" hoy), creciendo cada año a la tasa de aumento de renta — no asume que las unidades vacías u ocupadas sin pagar se resuelvan solas; la renta potencial se muestra aparte, como referencia. El presupuesto de remodelación se asume pagado en efectivo (no se financia con el préstamo) y solo el % de "retorno de la remodelación" se refleja en el valor de reventa proyectado — la apreciación compone sobre ese valor, no sobre el precio de compra original. El estimador de valor por sqft usa el $/sqft que tú ingresas (no hay lookup automático por zip code — no existe esa base de datos aquí), ajustado por material y condición; el "punto de partida rápido" solo llena un valor editable de ejemplo, nunca es la fuente de verdad. Trátalo como punto de partida, no como tasación. No se modela impuesto sobre la renta ni sobre la ganancia de capital al vender. La ganancia real descuenta la ganancia nominal por la inflación acumulada de cada año (÷ (1+inflación)^año). El "retorno real anualizado" es la tasa de crecimiento compuesta anual de tu down payment en poder adquisitivo real si vendieras ese año — el año óptimo es donde esa tasa es más alta, no necesariamente el primer año en que cruzas el 100%.
+        <strong>Supuestos del modelo —</strong> la tarjeta 🎯 "¿Cuándo conviene vender?" fija el precio de venta que tú elegiste (no depende de ningún % de apreciación) y calcula la ganancia real con el balance del préstamo y el cash flow de cada año; si tomar más de 7 años en recuperar la inversión, o si nunca se recupera, te lo marca como red flag. El property tax se calcula como % fijo sobre el precio de compra; el seguro y el HOA se mantienen constantes; en modo "comprar, reparar y vender" el mantenimiento se calcula como % del valor de la propiedad ese año (no de la renta). La proyección de 10-40 años y el "año óptimo" (más abajo, la parte opcional que sí asume una apreciación) usan solo la renta <strong>real</strong> (unidades en estado "Pagando" hoy) — la renta potencial se muestra aparte, como referencia. El presupuesto de remodelación se asume pagado en efectivo (no se financia con el préstamo) y solo el % de "retorno de la remodelación" se refleja en el valor de reventa proyectado. El estimador de valor por sqft usa el $/sqft que tú ingresas, ajustado por material y condición — el "punto de partida rápido" solo llena un valor editable de ejemplo, nunca es la fuente de verdad; trátalo como punto de partida, no como tasación. No se modela impuesto sobre la renta ni sobre la ganancia de capital al vender. La ganancia real descuenta la ganancia nominal por la inflación acumulada de cada año (÷ (1+inflación)^año).
       </p>
     </section>
   </main>
@@ -545,9 +524,9 @@
   var currentMode = 'rent';
   var heroCollapsed = false;
 
-  var ids = ['goalMultiplier','goalExactPrice',
+  var ids = ['goalMultiplier','goalExactPrice','availableCash',
     'purchasePrice','closingCostBuyPct','propertyTaxPct','insuranceAnnual','hoaMonthly',
-    'remodelBudget','remodelRoiPct','marginPct','arvTarget',
+    'remodelBudget','remodelRoiPct',
     'downPaymentPct','interestRate','loanTermYears',
     'vacancyPct','maintenancePct','maintenancePctLive','mgmtPct','rentIncreasePct','cashReservePct',
     'appreciationPct','realtorPct','closingCostSellPct','inflationPct'];
@@ -567,7 +546,6 @@
     mgmtPct: function(v){ return Math.round(v)+'%'; },
     cashReservePct: function(v){ return Math.round(v)+'%'; },
     remodelRoiPct: function(v){ return Math.round(v)+'%'; },
-    marginPct: function(v){ return Math.round(v)+'%'; },
     rentIncreasePct: function(v){ return v.toFixed(1)+'%'; },
     appreciationPct: function(v){ return v.toFixed(1)+'%'; },
     realtorPct: function(v){ return v.toFixed(1)+'%'; },
@@ -639,7 +617,6 @@
 
   function computeUnitsSummary(){
     var today = new Date();
-    var targetDate = parseDateInput((document.getElementById('lossTargetDate')||{}).value);
     var rentaTotalReal=0, rentaPotencialNoCobrada=0, rentaTotalPotencialCompleta=0;
     var unitDetails=[], alerts=[];
     units.forEach(function(u){
@@ -653,13 +630,9 @@
         if (sinceDate){
           var monthsElapsed = Math.max(0, monthsBetween(sinceDate, today));
           var accumulatedLoss = u.rent*monthsElapsed;
-          var monthsToTarget = (targetDate && targetDate>today) ? Math.max(0, monthsBetween(today, targetDate)) : 0;
-          var projectedLoss = u.rent*monthsToTarget;
           alerts.push({
             name:u.name, rent:u.rent, monthsElapsed:monthsElapsed, accumulatedLoss:accumulatedLoss,
-            monthsToTarget:monthsToTarget, projectedLoss:projectedLoss,
-            sinceLabel: fmtMonthYear(sinceDate),
-            targetLabel: targetDate ? fmtMonthYear(targetDate) : null
+            sinceLabel: fmtMonthYear(sinceDate)
           });
         }
       }
@@ -693,10 +666,8 @@
     }).join('');
 
     var alertsHtml = us.alerts.map(function(a){
-      var totalLoss = a.accumulatedLoss + a.projectedLoss;
-      var projectedPart = a.targetLabel ? (' Si sigue así hasta <b>'+a.targetLabel+'</b>: <b>'+fmtUSD0.format(a.projectedLoss)+'</b> adicionales (total <b>'+fmtUSD0.format(totalLoss)+'</b>).') : '';
       return '<div class="waiting-alert">⚠ Estás perdiendo aproximadamente <b>'+fmtUSD0.format(a.rent)+'/mes</b> en renta no cobrada de «'+escapeHtml(a.name)+'». '+
-        'Acumulado desde <b>'+a.sinceLabel+'</b> ('+a.monthsElapsed+' '+(a.monthsElapsed===1?'mes':'meses')+'): <b>'+fmtUSD0.format(a.accumulatedLoss)+'</b>.'+projectedPart+
+        'Acumulado desde <b>'+a.sinceLabel+'</b> ('+a.monthsElapsed+' '+(a.monthsElapsed===1?'mes':'meses')+'): <b>'+fmtUSD0.format(a.accumulatedLoss)+'</b>.'+
       '</div>';
     }).join('');
 
@@ -707,28 +678,21 @@
       alertsHtml;
   }
 
-  // ---- Valuation estimator: $/sqft que EL USUARIO define para su zip code ----
-  // No hay lookup automático por zip — no tengo datos reales por código postal,
-  // y un número inventado que parezca preciso sería peor que no darlo. El preset
-  // de abajo solo llena un punto de partida editable, nunca es la fuente de verdad.
-  var ZONE_PRESETS = {
-    rural: {house:90, lot:1.5},
-    suburbio: {house:180, lot:12},
-    ciudad: {house:380, lot:40}
-  };
+  // ---- Valuation estimator: $/sqft de la casa que EL USUARIO define ----
+  // No hay lookup automático por zip/ubicación — no tengo datos reales por
+  // código postal, y un número inventado que parezca preciso sería peor que
+  // no darlo. El preset de abajo solo llena un punto de partida editable.
+  var ZONE_PRESETS = { rural: 90, suburbio: 180, ciudad: 380 };
   var MATERIAL_MULT = {madera:1.0, ladrillo:1.08, concreto:1.03};
   var CONDITION_MULT = {buena:1.0, reparar:0.82, remodelada:1.08};
 
   function computeValuation(){
-    var lotSqft = parseFloat(document.getElementById('lotM2').value)||0;
     var houseSqft = parseFloat(document.getElementById('houseM2').value)||0;
-    if (lotSqft<=0 && houseSqft<=0) return null;
+    if (houseSqft<=0) return null;
     var houseRate = parseFloat(document.getElementById('houseRatePerSqft').value)||0;
-    var lotRate = parseFloat(document.getElementById('lotRatePerSqft').value)||0;
     var material = document.getElementById('materialType').value;
     var condition = document.getElementById('conditionType').value;
-    var houseValue = houseSqft * houseRate * (MATERIAL_MULT[material]||1);
-    return houseValue * (CONDITION_MULT[condition]||1) + lotSqft * lotRate;
+    return houseSqft * houseRate * (MATERIAL_MULT[material]||1) * (CONDITION_MULT[condition]||1);
   }
 
   function updateValuationDisplay(){
@@ -745,55 +709,6 @@
       btn.disabled = false;
       btn.dataset.value = String(Math.round(val));
     }
-  }
-
-  // ---- Flip margin solver — usa el año óptimo ya calculado, no lo elige el usuario ----
-  function computeFlipMargin(inp, result){
-    var usedFallback = result.optimalYear==null;
-    var targetYear = usedFallback ? 1 : result.optimalYear;
-    var Y = Math.max(1, Math.min(targetYear, result.rows.length));
-    var row = result.rows[Y-1];
-    var sellPct = (inp.realtorPct + inp.closingCostSellPct)/100;
-    var desiredProfitAmount = inp.marginPct/100 * inp.purchasePrice;
-    var totalCashInvested = result.downPayment + result.closingCostsBuy + inp.remodelBudget;
-
-    var requiredSalePrice = (desiredProfitAmount + totalCashInvested - row.cashFlowCum + row.loanBalance) / (1 - sellPct);
-    var maxRemodelBudget = (inp.arvTarget*(1-sellPct) - row.loanBalance) + row.cashFlowCum - result.downPayment - result.closingCostsBuy - desiredProfitAmount;
-
-    return {
-      Y: Y, row: row, sellPct: sellPct, desiredProfitAmount: desiredProfitAmount,
-      totalCashInvested: totalCashInvested, requiredSalePrice: requiredSalePrice,
-      arv: inp.arvTarget, maxRemodelBudget: maxRemodelBudget, diff: maxRemodelBudget - inp.remodelBudget,
-      usedFallback: usedFallback
-    };
-  }
-
-  function renderFlipCard(result, flip, inp){
-    var body = document.getElementById('flip-body');
-    if (!body) return;
-
-    var withinBudget = flip.diff >= 0;
-    var compareChip = withinBudget
-      ? '<span class="chip good">✓ Dentro del presupuesto — margen extra de '+fmtUSD0.format(flip.diff)+'</span>'
-      : '<span class="chip critical">⚠ Excede el presupuesto recomendado por '+fmtUSD0.format(Math.abs(flip.diff))+'</span>';
-
-    var yearNote = flip.usedFallback
-      ? '<p class="cf-note" style="color:var(--critical)">⚠ No hay un año con retorno real positivo (ver el diagnóstico arriba) — estos números son para el año 1, solo como referencia.</p>'
-      : '<p class="sub" style="margin-bottom:12px;">Calculado automáticamente para el <strong style="color:var(--ink)">año óptimo (año '+flip.Y+')</strong> que ya calculó la app arriba.</p>';
-
-    var statsHtml =
-      stat('Precio de venta necesario', fmtUSD0.format(flip.requiredSalePrice)) +
-      stat('Presupuesto máximo de remodelación', fmtUSD0.format(Math.max(0,flip.maxRemodelBudget))) +
-      stat('Presupuesto planeado', fmtUSD0.format(inp.remodelBudget)) +
-      stat('Margen deseado', fmtPct(inp.marginPct,0)+' del precio de compra') +
-      stat('Balance del préstamo (año '+flip.Y+')', fmtUSD0.format(flip.row.loanBalance)) +
-      stat('Costos de venta estimados', fmtPct(flip.sellPct*100,1)+' del precio de venta');
-
-    body.innerHTML =
-      yearNote+
-      '<div style="margin-bottom:14px;">'+compareChip+'</div>'+
-      '<div class="flip-grid">'+statsHtml+'</div>'+
-      '<p class="cf-note">"Precio de venta necesario" es lo que tendrías que cobrar para lograr tu margen deseado, dado tu presupuesto de remodelación planeado ('+fmtUSD0.format(inp.remodelBudget)+'). "Presupuesto máximo" es lo contrario: cuánto podrías gastar en arreglos sin perder ese margen, dado tu valor de reventa objetivo (ARV) de '+fmtUSD0.format(flip.arv)+'. Ninguno de los dos asume la apreciación del mercado — son precios objetivo que dependen de lo que el comprador esté dispuesto a pagar, no proyecciones.</p>';
   }
 
   // ---- Diagnóstico: por qué ningún año recupera la inversión ----
@@ -849,12 +764,26 @@
     };
   }
 
+  var RED_FLAG_YEARS = 7;
+
   function renderGoalCard(result, goal, inp){
     var title = document.getElementById('goal-result-title');
     var body = document.getElementById('goal-result-body');
     if (!title || !body) return;
 
     title.textContent = '¿Cuándo conviene vender a '+fmtUSD0.format(goal.saleValue)+'?';
+
+    var requiredCash = result.downPayment + result.closingCostsBuy + inp.remodelBudget;
+    var cushion = inp.availableCash - requiredCash;
+    var budgetHtml =
+      '<div class="budget-check">'+
+        stat('Efectivo requerido', fmtUSD0.format(requiredCash))+
+        stat('Dinero disponible', fmtUSD0.format(inp.availableCash))+
+        stat(cushion>=0?'Colchón':'Te excedes por', fmtUSD0.format(Math.abs(cushion)), cushion>=0?'pos':'neg')+
+      '</div>';
+    var budgetFlag = cushion<0
+      ? '<div class="red-flag">🚩 No te alcanza el dinero disponible para esta compra tal como está configurada — necesitas '+fmtUSD0.format(Math.abs(cushion))+' más (down payment + costos de cierre + remodelación).</div>'
+      : '';
 
     var topHtml;
     if (goal.firstPositiveYear!=null){
@@ -877,6 +806,13 @@
         '<div class="hero-sub">Ni siquiera vendiendo a '+fmtUSD0.format(goal.saleValue)+' recuperas tu inversión dentro de '+goal.calcCap+' años — ese precio no alcanza a cubrir lo que pagaste más lo que gastas en tenerla. Sube el múltiplo/precio objetivo, o revisa tus costos mensuales.</div>';
     }
 
+    var redFlagHtml = '';
+    if (goal.firstPositiveYear==null){
+      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> ni en '+goal.calcCap+' años se recupera el dinero a este precio. La mayoría de los inversionistas no dejan dinero amarrado tanto tiempo esperando — este trato, tal como está, probablemente no vale la pena.</div>';
+    } else if (goal.firstPositiveYear > RED_FLAG_YEARS){
+      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> toma '+goal.firstPositiveYear+' años recuperar tu inversión a este precio — para la mayoría de los inversionistas, más de '+RED_FLAG_YEARS+' años amarrado en una sola propiedad es demasiado tiempo. Considera si vale la pena, o ajusta tu meta de venta.</div>';
+    }
+
     var tableRows = goal.rows.map(function(r){
       var isHit = r.year===goal.firstPositiveYear;
       return '<tr'+(isHit?' class="row-hit"':'')+'>'+
@@ -885,14 +821,15 @@
       '</tr>';
     }).join('');
 
-    body.innerHTML = topHtml +
-      '<table class="goal-table"><thead><tr><th>Año</th><th>Ganancia si vendes a '+fmtUSD0.format(goal.saleValue)+'</th></tr></thead><tbody>'+tableRows+'</tbody></table>';
+    body.innerHTML = budgetHtml + budgetFlag + topHtml + redFlagHtml +
+      '<div class="goal-table-scroll"><table class="goal-table"><thead><tr><th>Año</th><th>Ganancia si vendes a '+fmtUSD0.format(goal.saleValue)+'</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>';
   }
 
   function readInputs(){
     return {
       goalMultiplier: parseFloat(els.goalMultiplier.value)||1,
       goalExactPrice: parseFloat(els.goalExactPrice.value)||0,
+      availableCash: parseFloat(els.availableCash.value)||0,
       purchasePrice: parseFloat(els.purchasePrice.value)||0,
       closingCostBuyPct: parseFloat(els.closingCostBuyPct.value)||0,
       propertyTaxPct: parseFloat(els.propertyTaxPct.value)||0,
@@ -900,8 +837,6 @@
       hoaMonthly: parseFloat(els.hoaMonthly.value)||0,
       remodelBudget: parseFloat(els.remodelBudget.value)||0,
       remodelRoiPct: parseFloat(els.remodelRoiPct.value)||0,
-      marginPct: parseFloat(els.marginPct.value)||0,
-      arvTarget: parseFloat(els.arvTarget.value)||0,
       downPaymentPct: parseFloat(els.downPaymentPct.value)||0,
       interestRate: parseFloat(els.interestRate.value)||0,
       loanTermYears: parseFloat(els.loanTermYears.value)||30,
@@ -1350,7 +1285,9 @@
     document.getElementById('mode-live').classList.toggle('active', mode==='live');
     document.querySelectorAll('.rent-only').forEach(function(elx){ elx.style.display = mode==='rent' ? '' : 'none'; });
     document.querySelectorAll('.live-only').forEach(function(elx){ elx.style.display = mode==='live' ? '' : 'none'; });
-    document.getElementById('live-note').style.display = mode==='live' ? 'block' : 'none';
+    document.getElementById('mode-note').textContent = mode==='rent'
+      ? 'Cobras renta mientras decides cuándo vender — eso ayuda a cubrir el costo mensual mientras esperas el mejor momento.'
+      : 'Sin renta mientras la tienes — la hipoteca, impuestos, seguro y mantenimiento son puro costo hasta que la vendas. Ideal para comprar, reparar, y vender rápido.';
     document.getElementById('cashflow-card').style.display = mode==='rent' ? '' : 'none';
     update();
   }
@@ -1389,7 +1326,6 @@
     renderGoalCard(result, computeGoalTable(inp, result), inp);
     renderHero(result, inp);
     renderCashflow(result, inp, us);
-    renderFlipCard(result, computeFlipMargin(inp, result), inp);
     renderTable(result);
     renderChart1(result);
     renderChart2(result);
@@ -1404,11 +1340,6 @@
   var twoMonthsAgo = new Date(); twoMonthsAgo.setMonth(twoMonthsAgo.getMonth()-2);
   addUnit('Arriba', 1800, 'paying', null);
   addUnit('Basement', 700, 'vacant', isoDate(twoMonthsAgo));
-
-  var fiveMonthsAhead = new Date(); fiveMonthsAhead.setMonth(fiveMonthsAhead.getMonth()+5);
-  document.getElementById('lossTargetDate').value = isoDate(fiveMonthsAhead);
-  document.getElementById('lossTargetDate').addEventListener('change', update);
-  document.getElementById('lossTargetDate').addEventListener('input', update);
 
   document.getElementById('add-unit').addEventListener('click', function(){
     addUnit('Unidad '+(units.length+1), 0, 'to_rent', null);
@@ -1462,23 +1393,22 @@
   renderUnits();
 
   // ---- Valuation estimator wiring ----
-  ['lotM2','houseM2','houseRatePerSqft','lotRatePerSqft','materialType','conditionType'].forEach(function(id){
+  ['houseM2','houseRatePerSqft','materialType','conditionType'].forEach(function(id){
     var elx = document.getElementById(id);
     elx.addEventListener('input', updateValuationDisplay);
     elx.addEventListener('change', updateValuationDisplay);
   });
   document.getElementById('zonePreset').addEventListener('change', function(){
-    var preset = ZONE_PRESETS[this.value];
-    if (!preset) return;
-    document.getElementById('houseRatePerSqft').value = preset.house;
-    document.getElementById('lotRatePerSqft').value = preset.lot;
+    var rate = ZONE_PRESETS[this.value];
+    if (rate==null) return;
+    document.getElementById('houseRatePerSqft').value = rate;
     updateValuationDisplay();
   });
   document.getElementById('use-estimate-btn').addEventListener('click', function(){
     var val = computeValuation();
     if (val==null) return;
-    document.getElementById('arvTarget').value = Math.round(val);
-    update();
+    document.getElementById('goalExactPrice').value = Math.round(val);
+    setGoalMode('exact');
   });
   updateValuationDisplay();
 
