@@ -89,6 +89,8 @@
   input[type="range"]{width:100%;accent-color:var(--accent);height:18px;cursor:pointer;}
   input[type="date"]{border:1px solid var(--border-strong);border-radius:6px;padding:8px 9px;font-family:var(--font-mono);font-size:12.5px;background:var(--surface-2);color:var(--ink);width:100%;}
   input[type="date"]:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .plain-input{border:1px solid var(--border-strong);border-radius:6px;padding:8px 10px;font-family:var(--font-mono);font-size:13px;background:var(--surface-2);color:var(--ink);width:100%;}
+  .plain-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 
   .unit-row{border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:10px;background:var(--surface-2);}
   .unit-row-top{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
@@ -271,11 +273,27 @@
             <span class="hint">Solo el área habitable bajo techo (siempre es menor que el lote). En el listing aparece como "Living Area" o "Square Footage".</span>
           </div>
           <div class="field">
-            <select class="plain" id="zoneType" aria-label="Tipo de zona">
-              <option value="urbana" selected>Zona urbana / suburbana</option>
-              <option value="prestigio">Zona residencial de prestigio</option>
-              <option value="rural">Zona rural o comunitaria</option>
+            <label for="zipCode">Zip code <span class="hint" style="display:inline">(solo referencia)</span></label>
+            <input type="text" id="zipCode" class="plain-input" placeholder="Ej. 33101" inputmode="numeric" maxlength="10">
+            <span class="hint">No lo uso para calcular — no tengo una base de datos real por zip code, y prefiero no inventarte un número que parezca preciso sin serlo. Búscalo tú: en Zillow/Redfin filtra por tu zip, mira ventas recientes, y anota el "Price per sqft" — ponlo abajo.</span>
+          </div>
+          <div class="field">
+            <label for="zonePreset">Punto de partida rápido <span class="hint" style="display:inline">(opcional, editable después)</span></label>
+            <select class="plain" id="zonePreset">
+              <option value="" selected>— o pon tu propio $/sqft abajo —</option>
+              <option value="rural">Rural / pueblo pequeño</option>
+              <option value="suburbio">Suburbio típico</option>
+              <option value="ciudad">Ciudad grande / zona cara</option>
             </select>
+          </div>
+          <div class="field">
+            <label for="houseRatePerSqft">$/sqft de la casa en tu zip</label>
+            <div class="input-prefix"><span>$</span><input type="number" id="houseRatePerSqft" min="0" step="5" value="180"></div>
+            <span class="hint">El número que más importa — de esto depende casi todo el estimado.</span>
+          </div>
+          <div class="field">
+            <label for="lotRatePerSqft">$/sqft del lote (terreno) en tu zip</label>
+            <div class="input-prefix"><span>$</span><input type="number" id="lotRatePerSqft" min="0" step="1" value="12"></div>
           </div>
           <div class="field">
             <div class="unit-row-fields">
@@ -297,7 +315,7 @@
               <div class="valuation-value muted" id="valuation-value">Ingresa los pies² para ver una estimación</div>
               <button type="button" class="use-estimate-btn" id="use-estimate-btn" disabled>Usar como valor de reventa objetivo (ARV) →</button>
             </div>
-            <span class="hint">Estimación aproximada con tarifas genéricas por sqft a nivel nacional de EE.UU. — varían mucho por estado/metro, ajusta el ARV manualmente según comparables reales (Zillow, Redfin, un agente local).</span>
+            <span class="hint">= ($/sqft de la casa × área × ajuste por material y condición) + ($/sqft del lote × área del lote). Tan preciso como los $/sqft que pongas arriba — si dejas los defaults, es solo un placeholder.</span>
           </div>
 
           <div class="field" style="margin-top:4px;">
@@ -473,7 +491,7 @@
       </div>
 
       <p class="assumptions">
-        <strong>Supuestos del modelo —</strong> el property tax se calcula como % fijo sobre el precio de compra; el seguro y el HOA se mantienen constantes; en modo vivienda el mantenimiento se calcula como % del valor de la propiedad ese año (no de la renta). La proyección de 10-40 años y el año óptimo usan solo la renta <strong>real</strong> (unidades en estado "Pagando" hoy), creciendo cada año a la tasa de aumento de renta — no asume que las unidades vacías u ocupadas sin pagar se resuelvan solas; la renta potencial se muestra aparte, como referencia. El presupuesto de remodelación se asume pagado en efectivo (no se financia con el préstamo) y solo el % de "retorno de la remodelación" se refleja en el valor de reventa proyectado — la apreciación compone sobre ese valor, no sobre el precio de compra original. El estimador de valor por sqft usa tarifas genéricas a nivel nacional de EE.UU. por zona/material/condición, no comparables reales de tu estado o metro — trátalo como punto de partida, no como tasación. No se modela impuesto sobre la renta ni sobre la ganancia de capital al vender. La ganancia real descuenta la ganancia nominal por la inflación acumulada de cada año (÷ (1+inflación)^año). El "retorno real anualizado" es la tasa de crecimiento compuesta anual de tu down payment en poder adquisitivo real si vendieras ese año — el año óptimo es donde esa tasa es más alta, no necesariamente el primer año en que cruzas el 100%.
+        <strong>Supuestos del modelo —</strong> el property tax se calcula como % fijo sobre el precio de compra; el seguro y el HOA se mantienen constantes; en modo vivienda el mantenimiento se calcula como % del valor de la propiedad ese año (no de la renta). La proyección de 10-40 años y el año óptimo usan solo la renta <strong>real</strong> (unidades en estado "Pagando" hoy), creciendo cada año a la tasa de aumento de renta — no asume que las unidades vacías u ocupadas sin pagar se resuelvan solas; la renta potencial se muestra aparte, como referencia. El presupuesto de remodelación se asume pagado en efectivo (no se financia con el préstamo) y solo el % de "retorno de la remodelación" se refleja en el valor de reventa proyectado — la apreciación compone sobre ese valor, no sobre el precio de compra original. El estimador de valor por sqft usa el $/sqft que tú ingresas (no hay lookup automático por zip code — no existe esa base de datos aquí), ajustado por material y condición; el "punto de partida rápido" solo llena un valor editable de ejemplo, nunca es la fuente de verdad. Trátalo como punto de partida, no como tasación. No se modela impuesto sobre la renta ni sobre la ganancia de capital al vender. La ganancia real descuenta la ganancia nominal por la inflación acumulada de cada año (÷ (1+inflación)^año). El "retorno real anualizado" es la tasa de crecimiento compuesta anual de tu down payment en poder adquisitivo real si vendieras ese año — el año óptimo es donde esa tasa es más alta, no necesariamente el primer año en que cruzas el 100%.
       </p>
     </section>
   </main>
@@ -649,24 +667,28 @@
       alertsHtml;
   }
 
-  // ---- Valuation estimator (rough $/sqft model, US national averages) ----
-  // Solo son punto de partida — el precio por sqft real varía muchísimo entre
-  // estados y hasta entre códigos postales vecinos. Ajusta el ARV a mano con
-  // comparables reales para cualquier decisión seria.
-  var ZONE_HOUSE_RATE = {urbana:170, prestigio:350, rural:110};
-  var ZONE_LOT_RATE = {urbana:12, prestigio:35, rural:2};
+  // ---- Valuation estimator: $/sqft que EL USUARIO define para su zip code ----
+  // No hay lookup automático por zip — no tengo datos reales por código postal,
+  // y un número inventado que parezca preciso sería peor que no darlo. El preset
+  // de abajo solo llena un punto de partida editable, nunca es la fuente de verdad.
+  var ZONE_PRESETS = {
+    rural: {house:90, lot:1.5},
+    suburbio: {house:180, lot:12},
+    ciudad: {house:380, lot:40}
+  };
   var MATERIAL_MULT = {madera:1.0, ladrillo:1.08, concreto:1.03};
   var CONDITION_MULT = {buena:1.0, reparar:0.82, remodelada:1.08};
 
   function computeValuation(){
-    var lotM2 = parseFloat(document.getElementById('lotM2').value)||0;
-    var houseM2 = parseFloat(document.getElementById('houseM2').value)||0;
-    if (lotM2<=0 && houseM2<=0) return null;
-    var zone = document.getElementById('zoneType').value;
+    var lotSqft = parseFloat(document.getElementById('lotM2').value)||0;
+    var houseSqft = parseFloat(document.getElementById('houseM2').value)||0;
+    if (lotSqft<=0 && houseSqft<=0) return null;
+    var houseRate = parseFloat(document.getElementById('houseRatePerSqft').value)||0;
+    var lotRate = parseFloat(document.getElementById('lotRatePerSqft').value)||0;
     var material = document.getElementById('materialType').value;
     var condition = document.getElementById('conditionType').value;
-    var houseValue = houseM2 * (ZONE_HOUSE_RATE[zone]||0) * (MATERIAL_MULT[material]||1);
-    return houseValue * (CONDITION_MULT[condition]||1) + lotM2 * (ZONE_LOT_RATE[zone]||0);
+    var houseValue = houseSqft * houseRate * (MATERIAL_MULT[material]||1);
+    return houseValue * (CONDITION_MULT[condition]||1) + lotSqft * lotRate;
   }
 
   function updateValuationDisplay(){
@@ -1318,10 +1340,17 @@
   renderUnits();
 
   // ---- Valuation estimator wiring ----
-  ['lotM2','houseM2','zoneType','materialType','conditionType'].forEach(function(id){
+  ['lotM2','houseM2','houseRatePerSqft','lotRatePerSqft','materialType','conditionType'].forEach(function(id){
     var elx = document.getElementById(id);
     elx.addEventListener('input', updateValuationDisplay);
     elx.addEventListener('change', updateValuationDisplay);
+  });
+  document.getElementById('zonePreset').addEventListener('change', function(){
+    var preset = ZONE_PRESETS[this.value];
+    if (!preset) return;
+    document.getElementById('houseRatePerSqft').value = preset.house;
+    document.getElementById('lotRatePerSqft').value = preset.lot;
+    updateValuationDisplay();
   });
   document.getElementById('use-estimate-btn').addEventListener('click', function(){
     var val = computeValuation();
