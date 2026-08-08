@@ -1,0 +1,1108 @@
+<title>¿Cuál es el año óptimo para vender?</title>
+<style>
+  :root{
+    --bg:#EEEAE0;
+    --surface:#FBF9F4;
+    --surface-2:#FFFFFF;
+    --border:#DBD4C4;
+    --border-strong:#C7BEA9;
+    --ink:#211D17;
+    --ink-secondary:#6B6255;
+    --ink-muted:#948B7B;
+    --accent:#A85C2A;
+    --accent-strong:#7A421C;
+    --accent-tint:#F2E2D2;
+    --accent-tint-2:#EAD0B4;
+    --real:#33578F;
+    --real-tint:#DEE4F0;
+    --good:#1F8A5C;
+    --good-bg:#E1EFE7;
+    --critical:#C1442E;
+    --critical-bg:#F6E2DD;
+    --shadow: 0 1px 2px rgba(33,29,23,.06), 0 8px 24px -12px rgba(33,29,23,.18);
+    --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15181A; --surface:#1C2023; --surface-2:#22272A;
+      --border:#33383B; --border-strong:#454B4E;
+      --ink:#ECE7DC; --ink-secondary:#B4AC9C; --ink-muted:#7C7568;
+      --accent:#C97636; --accent-strong:#E8A874; --accent-tint:#33251A; --accent-tint-2:#43301F;
+      --real:#6F92D0; --real-tint:#232B3E;
+      --good:#2F9A6C; --good-bg:#16281F;
+      --critical:#D65F49; --critical-bg:#301E19;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15181A; --surface:#1C2023; --surface-2:#22272A;
+    --border:#33383B; --border-strong:#454B4E;
+    --ink:#ECE7DC; --ink-secondary:#B4AC9C; --ink-muted:#7C7568;
+    --accent:#C97636; --accent-strong:#E8A874; --accent-tint:#33251A; --accent-tint-2:#43301F;
+    --real:#6F92D0; --real-tint:#232B3E;
+    --good:#2F9A6C; --good-bg:#16281F;
+    --critical:#D65F49; --critical-bg:#301E19;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:var(--font-display);font-weight:600;text-wrap:balance;margin:0;}
+  ::selection{background:var(--accent-tint-2);}
+
+  .app{max-width:1280px;margin:0 auto;padding:0 20px 64px;}
+
+  .topbar{padding:28px 0 20px;border-bottom:1px solid var(--border);margin-bottom:22px;}
+  .eyebrow{display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-strong);margin-bottom:6px;}
+  .topbar h1{font-size:clamp(22px,3vw,30px);line-height:1.15;max-width:50ch;}
+  .topbar p{margin:8px 0 0;color:var(--ink-secondary);max-width:66ch;font-size:14px;}
+
+  .layout{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:24px;align-items:start;}
+  @media (max-width:900px){.layout{grid-template-columns:1fr;}}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px 20px;}
+  .card + .card{margin-top:16px;}
+
+  .inputs form{display:flex;flex-direction:column;}
+  .inputs .card h2{font-family:var(--font-body);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-secondary);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+
+  .mode-toggle{display:flex;border:1px solid var(--border-strong);border-radius:6px;overflow:hidden;margin-bottom:14px;}
+  .mode-btn{flex:1;padding:9px 8px;font-size:12px;background:var(--surface-2);border:none;color:var(--ink-secondary);cursor:pointer;font-family:var(--font-body);font-weight:600;}
+  .mode-btn + .mode-btn{border-left:1px solid var(--border-strong);}
+  .mode-btn.active{background:var(--accent);color:#fff;}
+  .mode-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+
+  .live-note{display:none;font-size:12px;color:var(--ink-secondary);background:var(--accent-tint);border:1px solid var(--border);border-radius:6px;padding:9px 10px;margin-bottom:14px;line-height:1.5;}
+
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  .field-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px;}
+  .field label{font-size:13px;color:var(--ink);}
+  .field .hint{display:block;font-size:11px;color:var(--ink-muted);margin-top:2px;}
+  #real-appreciation-hint.pos{color:var(--good);font-weight:600;}
+  #real-appreciation-hint.neg{color:var(--critical);font-weight:600;}
+  .field output{font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--accent-strong);font-weight:600;white-space:nowrap;}
+
+  input[type="range"]{width:100%;accent-color:var(--accent);height:18px;cursor:pointer;}
+  input[type="date"]{border:1px solid var(--border-strong);border-radius:6px;padding:8px 9px;font-family:var(--font-mono);font-size:12.5px;background:var(--surface-2);color:var(--ink);width:100%;}
+  input[type="date"]:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .unit-row{border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:10px;background:var(--surface-2);}
+  .unit-row-top{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .unit-name{flex:1;min-width:0;border:1px solid var(--border-strong);border-radius:6px;padding:7px 9px;font-family:var(--font-body);font-size:13px;background:var(--surface);color:var(--ink);}
+  .unit-remove{flex-shrink:0;width:28px;height:28px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:var(--ink-muted);cursor:pointer;font-size:15px;line-height:1;padding:0;}
+  .unit-remove:hover{color:var(--critical);border-color:var(--critical);}
+  .unit-row-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .unit-since-wrap{margin-top:8px;}
+  .unit-since-wrap label{display:block;font-size:11px;color:var(--ink-muted);margin-bottom:4px;}
+  .add-unit-btn{width:100%;padding:9px;border:1px dashed var(--border-strong);border-radius:6px;background:transparent;color:var(--accent-strong);font-weight:600;font-size:12.5px;cursor:pointer;margin-top:2px;}
+  .add-unit-btn:hover{background:var(--accent-tint);}
+
+  .cf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:14px;margin-bottom:14px;}
+  .cf-note{font-size:12px;color:var(--ink-muted);margin-bottom:16px;line-height:1.55;}
+  .unit-pill-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+  .unit-pill-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;}
+  .status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;font-size:10.5px;font-weight:700;white-space:nowrap;text-transform:uppercase;letter-spacing:.02em;}
+  .status-pill.paying{background:var(--good-bg);color:var(--good);}
+  .status-pill.occupied_not_paying{background:var(--critical-bg);color:var(--critical);}
+  .status-pill.vacant{background:var(--critical-bg);color:var(--critical);}
+  .status-pill.to_rent{background:var(--accent-tint);color:var(--accent-strong);}
+  .waiting-alert{border:1px solid var(--critical);background:var(--critical-bg);border-radius:6px;padding:10px 12px;font-size:12.5px;color:var(--ink);line-height:1.6;margin-bottom:10px;}
+  .waiting-alert:last-child{margin-bottom:0;}
+  .waiting-alert b{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+
+  .input-prefix{display:flex;align-items:center;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface-2);overflow:hidden;}
+  .input-prefix span{padding:8px 10px;color:var(--ink-muted);font-family:var(--font-mono);font-size:13px;border-right:1px solid var(--border);background:var(--surface);}
+  .input-prefix input, select.plain{border:none;background:transparent;padding:8px 10px;font-family:var(--font-mono);font-size:13px;color:var(--ink);width:100%;font-variant-numeric:tabular-nums;}
+  select.plain{border:1px solid var(--border-strong);border-radius:6px;background:var(--surface-2);font-family:var(--font-body);width:100%;padding:8px 10px;}
+  input:focus-visible, select:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button{opacity:.5;}
+
+  .results{min-width:0;}
+
+  .hero{position:sticky;top:16px;z-index:5;box-shadow:var(--shadow);transition:padding .15s ease;}
+  .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .hero-top-main{flex:1;min-width:0;}
+  .hero-label{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-secondary);font-weight:600;}
+  .hero-big{font-family:var(--font-display);font-size:clamp(28px,4vw,42px);line-height:1.05;margin:6px 0 4px;transition:font-size .15s ease;}
+  .hero-sub{color:var(--ink-secondary);font-size:12.5px;max-width:52ch;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:100px;font-size:12px;font-weight:600;white-space:nowrap;}
+  .chip.good{background:var(--good-bg);color:var(--good);}
+  .chip.critical{background:var(--critical-bg);color:var(--critical);}
+
+  .hero-toggle{flex-shrink:0;background:transparent;border:1px solid var(--border-strong);border-radius:6px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-secondary);padding:0;}
+  .hero-toggle:hover{background:var(--surface-2);color:var(--ink);}
+  .hero-toggle svg{width:13px;height:13px;transition:transform .15s ease;}
+  .hero.collapsed .hero-toggle svg{transform:rotate(180deg);}
+  .hero-detail{overflow:hidden;}
+  .hero.collapsed .hero-detail{display:none;}
+  .hero.collapsed{padding-top:14px;padding-bottom:14px;}
+  .hero.collapsed .hero-top{align-items:center;}
+  .hero.collapsed .hero-top-main{display:flex;align-items:baseline;gap:10px;}
+  .hero.collapsed .hero-label{white-space:nowrap;}
+  .hero.collapsed .hero-big{font-size:17px;margin:0;}
+
+  .milestones{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+  @media (max-width:480px){.milestones{grid-template-columns:1fr;}}
+  .milestone-value{font-family:var(--font-mono);font-size:15px;font-variant-numeric:tabular-nums;font-weight:600;margin-top:2px;}
+
+  .hero-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+  .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);margin-bottom:4px;}
+  .stat-value{font-family:var(--font-mono);font-size:15px;font-variant-numeric:tabular-nums;font-weight:600;}
+  .stat-value.pos{color:var(--good);}
+  .stat-value.neg{color:var(--critical);}
+
+  .chart-card h2, .table-card h2{font-size:15px;font-family:var(--font-body);font-weight:700;margin-bottom:2px;}
+  .chart-card .sub, .table-card .sub{color:var(--ink-secondary);font-size:12.5px;margin-bottom:10px;}
+
+  .legend{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;}
+  .legend-item{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-secondary);font-weight:600;}
+  .legend-item i{width:12px;height:3px;border-radius:2px;display:inline-block;}
+
+  .chart-wrap{position:relative;}
+  svg.chart{width:100%;height:auto;display:block;overflow:visible;}
+  svg.chart .grid-line{stroke:var(--border);stroke-width:1;}
+  svg.chart .zero-line{stroke:var(--border-strong);stroke-width:1.5;}
+  svg.chart .ref-line{stroke:var(--ink-muted);stroke-width:1.5;stroke-dasharray:4 4;}
+  svg.chart .axis-label{fill:var(--ink-muted);font-family:var(--font-mono);font-size:10.5px;}
+  svg.chart .ref-label{fill:var(--ink-secondary);font-family:var(--font-mono);font-size:10.5px;}
+  svg.chart .area-nominal{fill:url(#areaGradientNominal);}
+  svg.chart .line-nominal{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;}
+  svg.chart .line-real{fill:none;stroke:var(--real);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;}
+  svg.chart .dot-nominal{fill:var(--accent);stroke:var(--surface);stroke-width:2;}
+  svg.chart .dot-real{fill:var(--real);stroke:var(--surface);stroke-width:2;}
+  svg.chart .dot-optimal{fill:var(--good);stroke:var(--surface);stroke-width:2.5;}
+  svg.chart .label-nominal{fill:var(--accent-strong);font-family:var(--font-mono);font-weight:700;font-size:10.5px;}
+  svg.chart .label-real{fill:var(--real);font-family:var(--font-mono);font-weight:700;font-size:10.5px;}
+  svg.chart .label-optimal{fill:var(--good);font-family:var(--font-mono);font-weight:700;font-size:11px;}
+  svg.chart .crosshair{stroke:var(--ink-muted);stroke-width:1;pointer-events:none;opacity:0;}
+  svg.chart .hover-capture{fill:transparent;cursor:crosshair;}
+  svg.chart .bar{fill:var(--accent-tint-2);stroke:var(--accent);stroke-width:1;}
+  svg.chart .bar.optimal{fill:var(--good);stroke:var(--good);}
+
+  .tooltip{position:absolute;pointer-events:none;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:6px;padding:8px 10px;font-size:12px;box-shadow:var(--shadow);min-width:190px;transform:translate(-50%,-115%);opacity:0;transition:opacity .1s ease;z-index:6;}
+  .tooltip.show{opacity:1;}
+  .tooltip .t-year{font-weight:700;margin-bottom:4px;font-family:var(--font-body);}
+  .tooltip .t-row{display:flex;justify-content:space-between;gap:12px;color:var(--ink-secondary);}
+  .tooltip .t-row + .t-row{margin-top:2px;}
+  .tooltip .t-row b{font-family:var(--font-mono);color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600;}
+
+  .table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:6px;}
+  table{border-collapse:collapse;width:100%;min-width:1180px;}
+  thead th{position:sticky;top:0;background:var(--surface-2);text-align:right;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-muted);font-weight:600;padding:9px 11px;border-bottom:1px solid var(--border-strong);white-space:nowrap;}
+  thead th:first-child, tbody td:first-child{text-align:left;}
+  tbody td{text-align:right;padding:8px 11px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody td.neg{color:var(--critical);}
+  tbody td.pos{color:var(--good);}
+  tbody tr.row-hit td{background:var(--good-bg);}
+  tbody tr.row-optimal td:first-child{box-shadow:inset 3px 0 0 var(--good);}
+  .hit-chip{display:inline-block;margin-left:5px;font-family:var(--font-body);font-size:10px;font-weight:700;color:var(--good);}
+
+  .assumptions{margin-top:16px;font-size:12px;color:var(--ink-muted);line-height:1.6;max-width:84ch;}
+  .assumptions strong{color:var(--ink-secondary);}
+
+  @media (prefers-reduced-motion: reduce){.tooltip{transition:none;}}
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <span class="eyebrow">Propiedad de inversión o vivienda · análisis en dólares reales</span>
+    <h1>¿Cuál es el año óptimo para vender, considerando inflación?</h1>
+    <p>"Duplicar el down payment" en dólares nominales no es lo mismo que duplicar tu poder adquisitivo real — la inflación se come parte de esa ganancia. Ajusta los datos y compara el retorno nominal contra el real, año por año, para encontrar el momento en que tu dinero rinde más.</p>
+  </header>
+
+  <main class="layout">
+    <aside class="inputs" aria-label="Datos de entrada">
+      <form id="calc-form">
+        <section class="card">
+          <h2>1 · Propiedad</h2>
+          <div class="field">
+            <label for="purchasePrice">Precio de compra</label>
+            <div class="input-prefix"><span>$</span><input type="number" id="purchasePrice" min="0" step="1000" value="350000"></div>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="closingCostBuyPct">Closing costs al comprar</label><output id="closingCostBuyPct-val">3.0%</output></div>
+            <input type="range" id="closingCostBuyPct" min="0" max="6" step="0.25" value="3">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="propertyTaxPct">Property tax anual</label><output id="propertyTaxPct-val">1.20%</output></div>
+            <input type="range" id="propertyTaxPct" min="0" max="3" step="0.05" value="1.2">
+            <span class="hint">% sobre el precio de compra, cada año</span>
+          </div>
+          <div class="field">
+            <label for="insuranceAnnual">Seguro de la casa (anual)</label>
+            <div class="input-prefix"><span>$</span><input type="number" id="insuranceAnnual" min="0" step="50" value="1600"></div>
+          </div>
+          <div class="field">
+            <label for="hoaMonthly">HOA mensual <span class="hint" style="display:inline">(opcional)</span></label>
+            <div class="input-prefix"><span>$</span><input type="number" id="hoaMonthly" min="0" step="10" value="0"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>2 · Préstamo</h2>
+          <div class="field">
+            <div class="field-head"><label for="downPaymentPct">Down payment</label><output id="downPaymentPct-val">25%</output></div>
+            <input type="range" id="downPaymentPct" min="5" max="50" step="1" value="25">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="interestRate">Tasa de interés anual</label><output id="interestRate-val">7.000%</output></div>
+            <input type="range" id="interestRate" min="2" max="11" step="0.125" value="7">
+          </div>
+          <div class="field">
+            <label for="loanTermYears">Plazo del préstamo</label>
+            <select class="plain" id="loanTermYears">
+              <option value="15">15 años</option>
+              <option value="20">20 años</option>
+              <option value="30" selected>30 años</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>3 · Uso y renta</h2>
+          <div class="mode-toggle" role="tablist">
+            <button type="button" class="mode-btn active" data-mode="rent" id="mode-rent">Propiedad de renta</button>
+            <button type="button" class="mode-btn" data-mode="live" id="mode-live">Vivienda (no se renta)</button>
+          </div>
+          <p class="live-note" id="live-note">Modo vivienda: no se genera renta. La hipoteca, el property tax, el seguro y el mantenimiento se restan directamente como costo de tenencia — solo la apreciación y el pago de principal generan valor.</p>
+          <div class="field rent-only">
+            <label>Unidades de la propiedad</label>
+            <div id="units-list"></div>
+            <button type="button" id="add-unit" class="add-unit-btn">+ Agregar unidad</button>
+            <span class="hint">Solo las unidades en estado "Pagando" cuentan como renta real. Las demás se muestran como potencial.</span>
+          </div>
+          <div class="field rent-only">
+            <label for="lossTargetDate">Proyectar pérdida hasta</label>
+            <input type="date" id="lossTargetDate">
+            <span class="hint">Fecha límite para estimar cuánto más se perdería en renta no cobrada si una unidad sigue vacía u ocupada sin pagar.</span>
+          </div>
+          <div class="field rent-only">
+            <div class="field-head"><label for="cashReservePct">Reserva vacancia/mantenimiento (cash flow de hoy)</label><output id="cashReservePct-val">13%</output></div>
+            <input type="range" id="cashReservePct" min="0" max="30" step="1" value="13">
+            <span class="hint">Se aplica solo al cash flow de hoy (bruto vs. neto), no a la proyección de abajo. Ponlo en 0% para ver el número sin colchón.</span>
+          </div>
+          <div class="field rent-only">
+            <div class="field-head"><label for="vacancyPct">Reserva de vacancia (proyección)</label><output id="vacancyPct-val">5%</output></div>
+            <input type="range" id="vacancyPct" min="0" max="15" step="1" value="5">
+            <span class="hint">Para el modelo de 10-40 años, no para el cash flow de hoy.</span>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="maintenancePct">Reserva de mantenimiento (proyección)</label><output id="maintenancePct-val">8%</output></div>
+            <input type="range" id="maintenancePct" min="0" max="20" step="1" value="8">
+            <span class="hint" id="maintenance-hint">% de la renta bruta anual</span>
+          </div>
+          <div class="field rent-only">
+            <div class="field-head"><label for="mgmtPct">Property management</label><output id="mgmtPct-val">0%</output></div>
+            <input type="range" id="mgmtPct" min="0" max="12" step="1" value="0">
+          </div>
+          <div class="field rent-only">
+            <div class="field-head"><label for="rentIncreasePct">Aumento anual de renta</label><output id="rentIncreasePct-val">3.0%</output></div>
+            <input type="range" id="rentIncreasePct" min="0" max="8" step="0.5" value="3">
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>4 · Venta</h2>
+          <div class="field">
+            <div class="field-head"><label for="appreciationPct">Apreciación anual esperada</label><output id="appreciationPct-val">3.5%</output></div>
+            <input type="range" id="appreciationPct" min="0" max="9" step="0.5" value="3.5">
+            <span class="hint" id="real-appreciation-hint">≈ apreciación real: +0.0%/año, después de descontar la inflación</span>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="realtorPct">Comisión de realtor</label><output id="realtorPct-val">6.0%</output></div>
+            <input type="range" id="realtorPct" min="0" max="8" step="0.5" value="6">
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="closingCostSellPct">Closing costs al vender</label><output id="closingCostSellPct-val">2.0%</output></div>
+            <input type="range" id="closingCostSellPct" min="0" max="5" step="0.25" value="2">
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>5 · Inflación</h2>
+          <div class="field">
+            <div class="field-head"><label for="inflationPct">Inflación anual esperada</label><output id="inflationPct-val">4.00%</output></div>
+            <input type="range" id="inflationPct" min="0" max="8" step="0.25" value="4">
+            <span class="hint">Se usa para descontar tu ganancia nominal y ver el retorno en poder adquisitivo de hoy.</span>
+          </div>
+        </section>
+      </form>
+    </aside>
+
+    <section class="results">
+      <div class="card hero" id="hero"></div>
+
+      <div class="card" id="cashflow-card">
+        <h2>Cash flow de hoy y estado de las unidades</h2>
+        <div id="cashflow-body"></div>
+      </div>
+
+      <div class="card chart-card">
+        <h2>Retorno acumulado: nominal vs. real</h2>
+        <p class="sub">Ganancia neta si vendieras ese año, dividida entre tu down payment. La línea punteada marca 100% — duplicar tu dinero. El diamante verde marca el año óptimo.</p>
+        <div class="legend">
+          <span class="legend-item"><i style="background:var(--accent)"></i>Nominal</span>
+          <span class="legend-item"><i style="background:var(--real)"></i>Real (ajustado por inflación)</span>
+        </div>
+        <div class="chart-wrap">
+          <svg class="chart" id="chart1" viewBox="0 0 700 340" role="img" aria-label="Retorno acumulado nominal y real por año"></svg>
+          <div class="tooltip" id="tooltip1"></div>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <h2>Retorno real anualizado por año de venta</h2>
+        <p class="sub">El año con la barra más alta es el que hace rendir mejor cada dólar de tu down payment, ya descontada la inflación. 0% = tu dinero solo empató con la inflación.</p>
+        <div class="chart-wrap">
+          <svg class="chart" id="chart2" viewBox="0 0 700 260" role="img" aria-label="Retorno real anualizado por año de venta"></svg>
+          <div class="tooltip" id="tooltip2"></div>
+        </div>
+      </div>
+
+      <div class="card table-card">
+        <h2>Detalle año por año</h2>
+        <p class="sub">Nominal = dólares de cada año. Real = descontados a poder adquisitivo de hoy. <span id="horizon-note"></span></p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Año</th>
+                <th>Cash flow anual</th>
+                <th>Cash flow acum.</th>
+                <th>Balance préstamo</th>
+                <th>Equity principal</th>
+                <th>Valor propiedad</th>
+                <th>Ganancia nominal</th>
+                <th>Retorno nominal</th>
+                <th>Ganancia real</th>
+                <th>Retorno real</th>
+                <th>Real anualizado</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <p class="assumptions">
+        <strong>Supuestos del modelo —</strong> el property tax se calcula como % fijo sobre el precio de compra; el seguro y el HOA se mantienen constantes; en modo vivienda el mantenimiento se calcula como % del valor de la propiedad ese año (no de la renta). La proyección de 10-40 años y el año óptimo usan solo la renta <strong>real</strong> (unidades en estado "Pagando" hoy), creciendo cada año a la tasa de aumento de renta — no asume que las unidades vacías u ocupadas sin pagar se resuelvan solas; la renta potencial se muestra aparte, como referencia. No se modela impuesto sobre la renta ni sobre la ganancia de capital al vender. La ganancia real descuenta la ganancia nominal por la inflación acumulada de cada año (÷ (1+inflación)^año). El "retorno real anualizado" es la tasa de crecimiento compuesta anual de tu down payment en poder adquisitivo real si vendieras ese año — el año óptimo es donde esa tasa es más alta, no necesariamente el primer año en que cruzas el 100%.
+      </p>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var fmtUSD0 = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+  var fmtUSDsigned = function(v){ var s = fmtUSD0.format(Math.abs(v)); return (v<0?'-':'') + s; };
+  var fmtPct = function(v,d){ d=d===undefined?1:d; return v.toFixed(d)+'%'; };
+
+  var currentMode = 'rent';
+  var heroCollapsed = false;
+
+  var ids = ['purchasePrice','closingCostBuyPct','propertyTaxPct','insuranceAnnual','hoaMonthly',
+    'downPaymentPct','interestRate','loanTermYears',
+    'vacancyPct','maintenancePct','mgmtPct','rentIncreasePct','cashReservePct',
+    'appreciationPct','realtorPct','closingCostSellPct','inflationPct'];
+
+  var els = {};
+  ids.forEach(function(id){ els[id] = document.getElementById(id); });
+
+  var sliderFormats = {
+    closingCostBuyPct: function(v){ return v.toFixed(2)+'%'; },
+    propertyTaxPct: function(v){ return v.toFixed(2)+'%'; },
+    downPaymentPct: function(v){ return Math.round(v)+'%'; },
+    interestRate: function(v){ return v.toFixed(3)+'%'; },
+    vacancyPct: function(v){ return Math.round(v)+'%'; },
+    maintenancePct: function(v){ return Math.round(v)+'%'; },
+    mgmtPct: function(v){ return Math.round(v)+'%'; },
+    cashReservePct: function(v){ return Math.round(v)+'%'; },
+    rentIncreasePct: function(v){ return v.toFixed(1)+'%'; },
+    appreciationPct: function(v){ return v.toFixed(1)+'%'; },
+    realtorPct: function(v){ return v.toFixed(1)+'%'; },
+    closingCostSellPct: function(v){ return v.toFixed(2)+'%'; },
+    inflationPct: function(v){ return v.toFixed(2)+'%'; }
+  };
+
+  // ---- Units (multi-unit rent tracking) ----
+  var STATUS_LABELS = {paying:'Pagando', occupied_not_paying:'Ocupada sin pagar', vacant:'Vacía', to_rent:'Por rentar'};
+  var units = [];
+  var unitIdCounter = 0;
+
+  function isoDate(d){
+    var y=d.getFullYear(), m=String(d.getMonth()+1).length<2?'0'+(d.getMonth()+1):(d.getMonth()+1), day=String(d.getDate()).length<2?'0'+d.getDate():d.getDate();
+    return y+'-'+m+'-'+day;
+  }
+  function parseDateInput(str){
+    if (!str) return null;
+    var parts = str.split('-');
+    if (parts.length!==3) return null;
+    var d = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function monthsBetween(d1, d2){
+    var months = (d2.getFullYear()-d1.getFullYear())*12 + (d2.getMonth()-d1.getMonth());
+    if (d2.getDate() < d1.getDate()) months -= 1;
+    return months;
+  }
+  function fmtMonthYear(d){
+    return d.toLocaleDateString('es-ES', {month:'short', year:'numeric'});
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function addUnit(name, rent, status, since){
+    unitIdCounter++;
+    units.push({id:'u'+unitIdCounter, name:name, rent:rent, status:status, since:since||null});
+  }
+
+  function renderUnits(){
+    var list = document.getElementById('units-list');
+    if (!list) return;
+    list.innerHTML = units.map(function(u){
+      var needsSince = (u.status==='occupied_not_paying' || u.status==='vacant');
+      return '<div class="unit-row" data-id="'+u.id+'">'+
+        '<div class="unit-row-top">'+
+          '<input type="text" class="unit-name" value="'+escapeHtml(u.name)+'" placeholder="Nombre de la unidad" aria-label="Nombre de la unidad">'+
+          (units.length>1 ? '<button type="button" class="unit-remove" title="Eliminar unidad" aria-label="Eliminar unidad">×</button>' : '')+
+        '</div>'+
+        '<div class="unit-row-fields">'+
+          '<div class="input-prefix"><span>$</span><input type="number" class="unit-rent" min="0" step="25" value="'+u.rent+'" aria-label="Renta esperada de mercado"></div>'+
+          '<select class="plain unit-status" aria-label="Estado de la unidad">'+
+            '<option value="paying"'+(u.status==='paying'?' selected':'')+'>Pagando</option>'+
+            '<option value="occupied_not_paying"'+(u.status==='occupied_not_paying'?' selected':'')+'>Ocupada sin pagar</option>'+
+            '<option value="vacant"'+(u.status==='vacant'?' selected':'')+'>Vacía</option>'+
+            '<option value="to_rent"'+(u.status==='to_rent'?' selected':'')+'>Por rentar</option>'+
+          '</select>'+
+        '</div>'+
+        '<div class="unit-since-wrap" style="display:'+(needsSince?'':'none')+'">'+
+          '<label>Desde cuándo está así</label>'+
+          '<input type="date" class="unit-since" value="'+(u.since||'')+'">'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  function computeUnitsSummary(){
+    var today = new Date();
+    var targetDate = parseDateInput((document.getElementById('lossTargetDate')||{}).value);
+    var rentaTotalReal=0, rentaPotencialNoCobrada=0, rentaTotalPotencialCompleta=0;
+    var unitDetails=[], alerts=[];
+    units.forEach(function(u){
+      rentaTotalPotencialCompleta += u.rent;
+      if (u.status==='paying'){ rentaTotalReal += u.rent; }
+      else { rentaPotencialNoCobrada += u.rent; }
+      unitDetails.push({name:u.name, rent:u.rent, status:u.status, statusLabel:STATUS_LABELS[u.status]||u.status});
+
+      if (u.status==='occupied_not_paying' || u.status==='vacant'){
+        var sinceDate = parseDateInput(u.since);
+        if (sinceDate){
+          var monthsElapsed = Math.max(0, monthsBetween(sinceDate, today));
+          var accumulatedLoss = u.rent*monthsElapsed;
+          var monthsToTarget = (targetDate && targetDate>today) ? Math.max(0, monthsBetween(today, targetDate)) : 0;
+          var projectedLoss = u.rent*monthsToTarget;
+          alerts.push({
+            name:u.name, rent:u.rent, monthsElapsed:monthsElapsed, accumulatedLoss:accumulatedLoss,
+            monthsToTarget:monthsToTarget, projectedLoss:projectedLoss,
+            sinceLabel: fmtMonthYear(sinceDate),
+            targetLabel: targetDate ? fmtMonthYear(targetDate) : null
+          });
+        }
+      }
+    });
+    return {
+      rentaTotalReal: rentaTotalReal, rentaPotencialNoCobrada: rentaPotencialNoCobrada,
+      rentaTotalPotencialCompleta: rentaTotalPotencialCompleta,
+      unitDetails: unitDetails, alerts: alerts
+    };
+  }
+
+  function stat(label,val,cls){
+    return '<div><div class="stat-label">'+label+'</div><div class="stat-value'+(cls?' '+cls:'')+'">'+val+'</div></div>';
+  }
+
+  function renderCashflow(result, inp, us){
+    var body = document.getElementById('cashflow-body');
+    if (!body) return;
+    var bruto = us.rentaTotalReal - result.piti;
+    var neto = bruto - (inp.cashReservePct/100) * us.rentaTotalReal;
+
+    var statsHtml =
+      stat('Renta real cobrada', fmtUSD0.format(us.rentaTotalReal)+'/mes') +
+      (us.rentaPotencialNoCobrada>0 ? stat('Renta potencial no cobrada', fmtUSD0.format(us.rentaPotencialNoCobrada)+'/mes', 'neg') : '') +
+      stat('Pago mensual (PITI)', fmtUSD0.format(result.piti)) +
+      stat('Cash flow BRUTO', fmtUSDsigned(bruto), bruto>=0?'pos':'neg') +
+      stat('Cash flow NETO ('+inp.cashReservePct.toFixed(0)+'% reserva)', fmtUSDsigned(neto), neto>=0?'pos':'neg');
+
+    var unitsHtml = us.unitDetails.map(function(u){
+      return '<div class="unit-pill-row"><span>'+escapeHtml(u.name)+' · '+fmtUSD0.format(u.rent)+'/mes</span><span class="status-pill '+u.status+'">'+u.statusLabel+'</span></div>';
+    }).join('');
+
+    var alertsHtml = us.alerts.map(function(a){
+      var totalLoss = a.accumulatedLoss + a.projectedLoss;
+      var projectedPart = a.targetLabel ? (' Si sigue así hasta <b>'+a.targetLabel+'</b>: <b>'+fmtUSD0.format(a.projectedLoss)+'</b> adicionales (total <b>'+fmtUSD0.format(totalLoss)+'</b>).') : '';
+      return '<div class="waiting-alert">⚠ Estás perdiendo aproximadamente <b>'+fmtUSD0.format(a.rent)+'/mes</b> en renta no cobrada de «'+escapeHtml(a.name)+'». '+
+        'Acumulado desde <b>'+a.sinceLabel+'</b> ('+a.monthsElapsed+' '+(a.monthsElapsed===1?'mes':'meses')+'): <b>'+fmtUSD0.format(a.accumulatedLoss)+'</b>.'+projectedPart+
+      '</div>';
+    }).join('');
+
+    body.innerHTML =
+      '<div class="cf-grid">'+statsHtml+'</div>'+
+      '<p class="cf-note">El cash flow <b style="font-family:var(--font-mono)">NETO</b> resta una reserva de vacancia/mantenimiento del '+inp.cashReservePct.toFixed(0)+'% sobre la renta cobrada — es un supuesto conservador para planear, no un gasto real que ya estés pagando. Bájalo a 0% para ver el número sin colchón.</p>'+
+      (unitsHtml ? '<div class="unit-pill-list">'+unitsHtml+'</div>' : '')+
+      alertsHtml;
+  }
+
+  function readInputs(){
+    return {
+      purchasePrice: parseFloat(els.purchasePrice.value)||0,
+      closingCostBuyPct: parseFloat(els.closingCostBuyPct.value)||0,
+      propertyTaxPct: parseFloat(els.propertyTaxPct.value)||0,
+      insuranceAnnual: parseFloat(els.insuranceAnnual.value)||0,
+      hoaMonthly: parseFloat(els.hoaMonthly.value)||0,
+      downPaymentPct: parseFloat(els.downPaymentPct.value)||0,
+      interestRate: parseFloat(els.interestRate.value)||0,
+      loanTermYears: parseFloat(els.loanTermYears.value)||30,
+      vacancyPct: parseFloat(els.vacancyPct.value)||0,
+      maintenancePct: parseFloat(els.maintenancePct.value)||0,
+      mgmtPct: parseFloat(els.mgmtPct.value)||0,
+      cashReservePct: parseFloat(els.cashReservePct.value)||0,
+      rentIncreasePct: parseFloat(els.rentIncreasePct.value)||0,
+      appreciationPct: parseFloat(els.appreciationPct.value)||0,
+      realtorPct: parseFloat(els.realtorPct.value)||0,
+      closingCostSellPct: parseFloat(els.closingCostSellPct.value)||0,
+      inflationPct: parseFloat(els.inflationPct.value)||0,
+      mode: currentMode
+    };
+  }
+
+  function calc(inp){
+    var downPayment = inp.purchasePrice * inp.downPaymentPct/100;
+    var loanAmount = inp.purchasePrice - downPayment;
+    var closingCostsBuy = inp.purchasePrice * inp.closingCostBuyPct/100;
+    var r = inp.interestRate/100/12;
+    var n = Math.round(inp.loanTermYears*12);
+    var M;
+    if (n<=0){ M = 0; }
+    else if (r===0){ M = loanAmount/n; }
+    else { M = loanAmount * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1); }
+
+    function balanceAfter(k){
+      if (n<=0) return 0;
+      if (k>=n) return 0;
+      if (r===0) return Math.max(loanAmount - M*k, 0);
+      var bal = loanAmount*Math.pow(1+r,k) - M*(Math.pow(1+r,k)-1)/r;
+      return Math.max(bal,0);
+    }
+
+    var piti = M + inp.insuranceAnnual/12 + inp.hoaMonthly + (inp.propertyTaxPct/100*inp.purchasePrice)/12;
+
+    var CALC_CAP = 40, MIN_HORIZON = 10, BUFFER = 3;
+
+    var rows = [];
+    var cashFlowCum = 0;
+    for (var year=1; year<=CALC_CAP; year++){
+      var propertyValue = inp.purchasePrice * Math.pow(1+inp.appreciationPct/100, year);
+      var effectiveRent, maintenance, mgmt;
+      if (inp.mode==='rent'){
+        var rentMonthlyY = inp.monthlyRent * Math.pow(1+inp.rentIncreasePct/100, year-1);
+        var grossRentAnnual = rentMonthlyY*12;
+        effectiveRent = grossRentAnnual * (1 - inp.vacancyPct/100);
+        maintenance = inp.maintenancePct/100 * grossRentAnnual;
+        mgmt = inp.mgmtPct/100 * effectiveRent;
+      } else {
+        effectiveRent = 0;
+        maintenance = inp.maintenancePct/100 * propertyValue;
+        mgmt = 0;
+      }
+      var propertyTax = inp.propertyTaxPct/100 * inp.purchasePrice;
+      var insurance = inp.insuranceAnnual;
+      var hoaAnnual = inp.hoaMonthly*12;
+      var debtService = M*12;
+      var netCashFlow = effectiveRent - propertyTax - insurance - hoaAnnual - maintenance - mgmt - debtService;
+      cashFlowCum += netCashFlow;
+
+      var k = year*12;
+      var loanBalance = balanceAfter(k);
+      var principalPaidCum = loanAmount - loanBalance;
+      var sellingCosts = propertyValue * (inp.realtorPct/100 + inp.closingCostSellPct/100);
+      var netProfitNominal = (propertyValue - loanBalance - sellingCosts) + cashFlowCum - downPayment - closingCostsBuy;
+      var returnNominalPct = downPayment>0 ? (netProfitNominal/downPayment*100) : 0;
+
+      var inflationFactor = Math.pow(1+inp.inflationPct/100, year);
+      var netProfitReal = netProfitNominal / inflationFactor;
+      var returnRealPct = downPayment>0 ? (netProfitReal/downPayment*100) : 0;
+
+      var totalMultipleReal = 1 + returnRealPct/100;
+      var annualizedRealPct = totalMultipleReal>0 ? (Math.pow(totalMultipleReal, 1/year)-1)*100 : null;
+
+      rows.push({
+        year: year, netCashFlow: netCashFlow, cashFlowCum: cashFlowCum,
+        loanBalance: loanBalance, principalPaidCum: principalPaidCum,
+        propertyValue: propertyValue, sellingCosts: sellingCosts,
+        netProfitNominal: netProfitNominal, returnNominalPct: returnNominalPct,
+        netProfitReal: netProfitReal, returnRealPct: returnRealPct,
+        annualizedRealPct: annualizedRealPct
+      });
+    }
+
+    function findCross(key){
+      var pts = [{year:0, v:0}].concat(rows.map(function(r){return {year:r.year, v:r[key]};}));
+      for (var i=1;i<pts.length;i++){
+        if (pts[i].v>=100){
+          var prev=pts[i-1], cur=pts[i];
+          if (cur.v===prev.v) return cur.year;
+          var frac = (100-prev.v)/(cur.v-prev.v);
+          return prev.year + frac*(cur.year-prev.year);
+        }
+      }
+      return null;
+    }
+    var crossNominalYear = findCross('returnNominalPct');
+    var crossRealYear = findCross('returnRealPct');
+
+    var optimalYear = null, bestVal = -Infinity;
+    rows.forEach(function(r){
+      if (r.annualizedRealPct!=null && r.annualizedRealPct>bestVal){ bestVal=r.annualizedRealPct; optimalYear=r.year; }
+    });
+
+    // Don't hard-stop the list at 10 years: stretch it out until it actually
+    // covers the optimal year (plus a little runway to show the curve turning
+    // down), and at least far enough to show both crossover points.
+    var horizon = MIN_HORIZON;
+    if (optimalYear!=null) horizon = Math.max(horizon, Math.min(CALC_CAP, optimalYear+BUFFER));
+    if (crossNominalYear!=null) horizon = Math.max(horizon, Math.min(CALC_CAP, Math.ceil(crossNominalYear)));
+    if (crossRealYear!=null) horizon = Math.max(horizon, Math.min(CALC_CAP, Math.ceil(crossRealYear)));
+    horizon = Math.min(CALC_CAP, horizon);
+    var hitCap = optimalYear!=null && optimalYear >= CALC_CAP - 1;
+
+    return {
+      downPayment: downPayment, loanAmount: loanAmount, closingCostsBuy: closingCostsBuy,
+      monthlyPI: M, piti: piti, rows: rows.slice(0, horizon), horizon: horizon, calcCap: CALC_CAP, hitCap: hitCap,
+      crossNominalYear: crossNominalYear, crossRealYear: crossRealYear,
+      optimalYear: optimalYear, optimalAnnualizedReal: optimalYear!=null?bestVal:null
+    };
+  }
+
+  function milestoneHtml(label, crossYear, capYears){
+    var val;
+    if (crossYear!=null){
+      var yrs=Math.floor(crossYear), months=Math.round((crossYear-yrs)*12);
+      if (months>=12){ yrs+=1; months=0; }
+      var parts=[];
+      if (yrs>0) parts.push(yrs+(yrs===1?' año':' años'));
+      if (months>0) parts.push(months+(months===1?' mes':' meses'));
+      val = parts.length ? parts.join(' y ') : 'Menos de 1 mes';
+    } else {
+      val = 'No se alcanza en '+capYears+' años';
+    }
+    return '<div><div class="stat-label">'+label+'</div><div class="milestone-value">'+val+'</div></div>';
+  }
+
+  function renderHero(result, inp){
+    var hero = document.getElementById('hero');
+    var monthlyCF = result.rows[0].netCashFlow/12;
+
+    var optBig, optChip, optSub;
+    if (result.optimalYear!=null){
+      optBig = 'Año '+result.optimalYear;
+      var av = result.optimalAnnualizedReal;
+      optChip = '<span class="chip '+(av>=0?'good':'critical')+'">'+(av>=0?'✓ ':'⚠ ')+fmtPct(av)+' real anualizado</span>';
+      optSub = 'Es el año donde el retorno real anualizado (ya descontada la inflación de '+inp.inflationPct.toFixed(2)+'%/año) es más alto — donde tu down payment rinde más eficientemente, no solo donde acumula más ganancia.';
+      if (result.hitCap){
+        optSub += ' El retorno real anualizado seguía mejorando hasta el límite de este análisis ('+result.calcCap+' años) — con estos supuestos podría seguir subiendo si retienes aún más tiempo.';
+      }
+    } else {
+      optBig = '—';
+      optChip = '<span class="chip critical">⚠ Ningún año recupera la inversión en términos reales</span>';
+      optSub = 'Con estos supuestos, la apreciación y la renta no alcanzan a superar la inflación de '+inp.inflationPct.toFixed(2)+'%/año en ningún año dentro de los primeros '+result.calcCap+'.';
+    }
+
+    hero.innerHTML =
+      '<div class="hero-top">'+
+        '<div class="hero-top-main"><span class="hero-label">Año óptimo para vender</span>'+
+          '<div class="hero-big">'+optBig+'</div>'+
+        '</div>'+
+        optChip+
+        '<button type="button" class="hero-toggle" id="hero-toggle" aria-expanded="'+(!heroCollapsed)+'" aria-controls="hero-detail" title="'+(heroCollapsed?'Expandir panel':'Contraer panel')+'">'+
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>'+
+        '</button>'+
+      '</div>'+
+      '<div class="hero-detail" id="hero-detail">'+
+        '<div class="hero-sub">'+optSub+'</div>'+
+        '<div class="milestones">'+
+          milestoneHtml('Duplicar down payment (nominal)', result.crossNominalYear, result.calcCap)+
+          milestoneHtml('Duplicar poder adquisitivo (real)', result.crossRealYear, result.calcCap)+
+        '</div>'+
+        '<div class="hero-stats">'+
+          stat('Down payment', fmtUSD0.format(result.downPayment))+
+          stat('Préstamo', fmtUSD0.format(result.loanAmount))+
+          stat('Closing costs (compra)', fmtUSD0.format(result.closingCostsBuy))+
+          stat('Pago mensual (PITI)', fmtUSD0.format(result.piti))+
+          stat('Cash flow mes 1', fmtUSDsigned(monthlyCF), monthlyCF>=0?'pos':'neg')+
+        '</div>'+
+      '</div>';
+
+    hero.classList.toggle('collapsed', heroCollapsed);
+    document.getElementById('hero-toggle').addEventListener('click', function(){
+      heroCollapsed = !heroCollapsed;
+      hero.classList.toggle('collapsed', heroCollapsed);
+      this.setAttribute('aria-expanded', String(!heroCollapsed));
+      this.title = heroCollapsed ? 'Expandir panel' : 'Contraer panel';
+    });
+  }
+
+  function renderTable(result){
+    var note = document.getElementById('horizon-note');
+    if (note){
+      note.textContent = 'La lista se extiende automáticamente hasta el año '+result.rows.length+' — lo necesario para mostrar el año óptimo'+(result.hitCap?' (seguía subiendo al llegar al límite del modelo)':'')+'.';
+    }
+    var tbody = document.getElementById('table-body');
+    var html = '';
+    var hitDone = false;
+    result.rows.forEach(function(row){
+      var isHit = !hitDone && row.returnNominalPct>=100;
+      if (isHit) hitDone = true;
+      var isOptimal = row.year===result.optimalYear;
+      html += '<tr class="'+(isHit?'row-hit ':'')+(isOptimal?'row-optimal':'')+'">'+
+        '<td>Año '+row.year+'</td>'+
+        '<td class="'+(row.netCashFlow>=0?'pos':'neg')+'">'+fmtUSDsigned(row.netCashFlow)+'</td>'+
+        '<td class="'+(row.cashFlowCum>=0?'pos':'neg')+'">'+fmtUSDsigned(row.cashFlowCum)+'</td>'+
+        '<td>'+fmtUSD0.format(row.loanBalance)+'</td>'+
+        '<td>'+fmtUSD0.format(row.principalPaidCum)+'</td>'+
+        '<td>'+fmtUSD0.format(row.propertyValue)+'</td>'+
+        '<td class="'+(row.netProfitNominal>=0?'pos':'neg')+'">'+fmtUSDsigned(row.netProfitNominal)+'</td>'+
+        '<td class="'+(row.returnNominalPct>=0?'pos':'neg')+'">'+fmtPct(row.returnNominalPct)+(isHit?'<span class="hit-chip">✓100%</span>':'')+'</td>'+
+        '<td class="'+(row.netProfitReal>=0?'pos':'neg')+'">'+fmtUSDsigned(row.netProfitReal)+'</td>'+
+        '<td class="'+(row.returnRealPct>=0?'pos':'neg')+'">'+fmtPct(row.returnRealPct)+'</td>'+
+        '<td class="'+(row.annualizedRealPct!=null && row.annualizedRealPct>=0?'pos':'neg')+'">'+(row.annualizedRealPct!=null?fmtPct(row.annualizedRealPct):'—')+(isOptimal?'<span class="hit-chip">★ óptimo</span>':'')+'</td>'+
+      '</tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  var svgNS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    var e = document.createElementNS(svgNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function niceStep(rawStep){
+    var steps=[10,20,25,50,100,200,250,500,1000];
+    for (var s=0;s<steps.length;s++){ if (rawStep<=steps[s]) return steps[s]; }
+    return Math.ceil(rawStep/500)*500;
+  }
+
+  function renderChart1(result){
+    var W=700,H=340,padL=52,padR=46,padT=20,padB=34;
+    var plotW=W-padL-padR, plotH=H-padT-padB;
+    var svg = document.getElementById('chart1');
+    svg.innerHTML = '';
+    var horizon = result.rows.length;
+
+    var defs = el('defs',{});
+    var grad = el('linearGradient',{id:'areaGradientNominal',x1:'0',y1:'0',x2:'0',y2:'1'});
+    grad.appendChild(el('stop',{offset:'0%','stop-color':'var(--accent)','stop-opacity':'0.18'}));
+    grad.appendChild(el('stop',{offset:'100%','stop-color':'var(--accent)','stop-opacity':'0'}));
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    var ptsN = [{year:0,v:0}].concat(result.rows.map(function(r){return {year:r.year,v:r.returnNominalPct};}));
+    var ptsR = [{year:0,v:0}].concat(result.rows.map(function(r){return {year:r.year,v:r.returnRealPct};}));
+    var allVals = ptsN.concat(ptsR).map(function(p){return p.v;}).concat([0,100]);
+    var yMin = Math.min.apply(null, allVals), yMax = Math.max.apply(null, allVals);
+    var padAmt = Math.max(10,(yMax-yMin)*0.15);
+    yMin = Math.floor((yMin-padAmt)/10)*10;
+    yMax = Math.ceil((yMax+padAmt)/10)*10;
+    if (yMax-yMin<20) yMax = yMin+20;
+
+    function xScale(year){ return padL + (year/horizon)*plotW; }
+    function yScale(val){ return padT + plotH*(1-(val-yMin)/(yMax-yMin)); }
+
+    var step = niceStep((yMax-yMin)/6);
+    var gridStart = Math.ceil(yMin/step)*step;
+    for (var v=gridStart; v<=yMax; v+=step){
+      var y=yScale(v);
+      svg.appendChild(el('line',{class:'grid-line',x1:padL,x2:W-padR,y1:y,y2:y}));
+      var lbl=el('text',{class:'axis-label',x:padL-8,y:y+3,'text-anchor':'end'}); lbl.textContent=v+'%'; svg.appendChild(lbl);
+    }
+    var xTickStep = horizon<=10 ? 2 : (horizon<=20 ? 4 : (horizon<=30 ? 5 : 10));
+    for (var yr=0; yr<=horizon; yr+=xTickStep){
+      var lx=el('text',{class:'axis-label',x:xScale(yr),y:H-padB+16,'text-anchor':'middle'}); lx.textContent='Año '+yr; svg.appendChild(lx);
+    }
+    if (horizon % xTickStep !== 0){
+      var lxLast=el('text',{class:'axis-label',x:xScale(horizon),y:H-padB+16,'text-anchor':'middle'}); lxLast.textContent='Año '+horizon; svg.appendChild(lxLast);
+    }
+
+    var y100 = yScale(100);
+    svg.appendChild(el('line',{class:'ref-line',x1:padL,x2:W-padR,y1:y100,y2:y100}));
+    var refLbl=el('text',{class:'ref-label',x:W-padR,y:y100-6,'text-anchor':'end'}); refLbl.textContent='100% · dinero duplicado'; svg.appendChild(refLbl);
+
+    function pathOf(pts){ return pts.map(function(p,i){ return (i===0?'M':'L')+xScale(p.year).toFixed(2)+','+yScale(p.v).toFixed(2); }).join(' '); }
+    var pathN = pathOf(ptsN), pathR = pathOf(ptsR);
+    var areaD = pathN+' L '+xScale(horizon).toFixed(2)+','+yScale(yMin).toFixed(2)+' L '+xScale(0).toFixed(2)+','+yScale(yMin).toFixed(2)+' Z';
+    svg.appendChild(el('path',{class:'area-nominal', d:areaD}));
+    svg.appendChild(el('path',{class:'line-nominal', d:pathN}));
+    svg.appendChild(el('path',{class:'line-real', d:pathR}));
+
+    if (result.crossNominalYear!=null){
+      var cxN=xScale(result.crossNominalYear);
+      svg.appendChild(el('circle',{class:'dot-nominal',cx:cxN,cy:y100,r:5}));
+      var lblN=el('text',{class:'label-nominal',x:cxN,y:y100-10,'text-anchor':result.crossNominalYear>horizon*0.8?'end':'middle'}); lblN.textContent='Nominal: año '+result.crossNominalYear.toFixed(1); svg.appendChild(lblN);
+    }
+    if (result.crossRealYear!=null){
+      var cxR=xScale(result.crossRealYear);
+      svg.appendChild(el('circle',{class:'dot-real',cx:cxR,cy:y100,r:5}));
+      var lblR=el('text',{class:'label-real',x:cxR,y:y100+16,'text-anchor':result.crossRealYear>horizon*0.8?'end':'middle'}); lblR.textContent='Real: año '+result.crossRealYear.toFixed(1); svg.appendChild(lblR);
+    }
+    if (result.optimalYear!=null){
+      var optRow = result.rows[result.optimalYear-1];
+      var ox=xScale(result.optimalYear), oy=yScale(optRow.returnRealPct);
+      svg.appendChild(el('circle',{class:'dot-optimal',cx:ox,cy:oy,r:6}));
+      var oLbl=el('text',{class:'label-optimal',x:ox,y:oy-12,'text-anchor':result.optimalYear>horizon*0.8?'end':'middle'}); oLbl.textContent='★ óptimo'; svg.appendChild(oLbl);
+    }
+
+    var crossLine = el('line',{class:'crosshair',x1:padL,x2:padL,y1:padT,y2:H-padB}); svg.appendChild(crossLine);
+    var hoverDotN = el('circle',{r:4.5,cx:padL,cy:padT,fill:'var(--accent)',stroke:'var(--surface)','stroke-width':2,opacity:0}); svg.appendChild(hoverDotN);
+    var hoverDotR = el('circle',{r:4.5,cx:padL,cy:padT,fill:'var(--real)',stroke:'var(--surface)','stroke-width':2,opacity:0}); svg.appendChild(hoverDotR);
+    var capture = el('rect',{class:'hover-capture',x:padL,y:padT,width:plotW,height:plotH}); svg.appendChild(capture);
+
+    var tooltip = document.getElementById('tooltip1');
+    var wrap = svg.parentElement;
+
+    function showAt(clientX){
+      var rect = svg.getBoundingClientRect();
+      var scaleX = rect.width/W, scaleY = rect.height/H;
+      var localX = clientX-rect.left;
+      var yearRaw = ((localX-padL)/plotW)*horizon;
+      var year = Math.round(Math.max(0,Math.min(horizon,yearRaw)));
+      var pN = ptsN[year], pR = ptsR[year];
+      var px = xScale(pN.year);
+      crossLine.setAttribute('x1',px); crossLine.setAttribute('x2',px); crossLine.style.opacity=1;
+      hoverDotN.setAttribute('cx',px); hoverDotN.setAttribute('cy',yScale(pN.v)); hoverDotN.style.opacity=1;
+      hoverDotR.setAttribute('cx',px); hoverDotR.setAttribute('cy',yScale(pR.v)); hoverDotR.style.opacity=1;
+
+      var row = result.rows[year-1];
+      var body;
+      if (year===0){ body='<div class="t-row"><span>Estado</span><b>Compra — retorno 0%</b></div>'; }
+      else {
+        body =
+          '<div class="t-row"><span>Cash flow anual</span><b>'+fmtUSDsigned(row.netCashFlow)+'</b></div>'+
+          '<div class="t-row"><span>Valor propiedad</span><b>'+fmtUSD0.format(row.propertyValue)+'</b></div>'+
+          '<div class="t-row"><span>Retorno nominal</span><b>'+fmtPct(row.returnNominalPct)+'</b></div>'+
+          '<div class="t-row"><span>Retorno real</span><b>'+fmtPct(row.returnRealPct)+'</b></div>'+
+          '<div class="t-row"><span>Real anualizado</span><b>'+(row.annualizedRealPct!=null?fmtPct(row.annualizedRealPct):'—')+'</b></div>';
+      }
+      tooltip.innerHTML = '<div class="t-year">Año '+year+'</div>'+body;
+      var left = px*scaleX, top = Math.min(yScale(pN.v),yScale(pR.v))*scaleY;
+      var wrapWidth = wrap.getBoundingClientRect().width;
+      if (left<95) left=95; if (left>wrapWidth-95) left=wrapWidth-95;
+      tooltip.style.left=left+'px'; tooltip.style.top=Math.max(top,58)+'px';
+      tooltip.classList.add('show');
+    }
+    function hide(){ crossLine.style.opacity=0; hoverDotN.style.opacity=0; hoverDotR.style.opacity=0; tooltip.classList.remove('show'); }
+    capture.addEventListener('mousemove', function(e){ showAt(e.clientX); });
+    capture.addEventListener('mouseleave', hide);
+    capture.addEventListener('touchmove', function(e){ if (e.touches&&e.touches[0]){ showAt(e.touches[0].clientX); e.preventDefault(); } }, {passive:false});
+    capture.addEventListener('touchend', hide);
+  }
+
+  function renderChart2(result){
+    var W=700,H=260,padL=52,padR=30,padT=20,padB=34;
+    var plotW=W-padL-padR, plotH=H-padT-padB;
+    var svg = document.getElementById('chart2');
+    svg.innerHTML = '';
+    var horizon = result.rows.length;
+
+    var vals = result.rows.map(function(r){ return r.annualizedRealPct==null?0:r.annualizedRealPct; });
+    var yMin = Math.min.apply(null, vals.concat([0]));
+    var yMax = Math.max.apply(null, vals.concat([0]));
+    var padAmt = Math.max(2,(yMax-yMin)*0.2);
+    yMin = Math.floor((yMin-padAmt)/2)*2;
+    yMax = Math.ceil((yMax+padAmt)/2)*2;
+    if (yMax-yMin<8){ yMax = yMin+8; }
+
+    function xSlot(year){ return padL + ((year-0.5)/horizon)*plotW; }
+    function yScale(val){ return padT + plotH*(1-(val-yMin)/(yMax-yMin)); }
+
+    var step = niceStep((yMax-yMin)/5);
+    var gridStart = Math.ceil(yMin/step)*step;
+    for (var v=gridStart; v<=yMax; v+=step){
+      var y=yScale(v);
+      svg.appendChild(el('line',{class:'grid-line',x1:padL,x2:W-padR,y1:y,y2:y}));
+      var lbl=el('text',{class:'axis-label',x:padL-8,y:y+3,'text-anchor':'end'}); lbl.textContent=v+'%'; svg.appendChild(lbl);
+    }
+    if (yMin<0 && yMax>0){
+      var y0=yScale(0);
+      svg.appendChild(el('line',{class:'zero-line',x1:padL,x2:W-padR,y1:y0,y2:y0}));
+      var zLbl=el('text',{class:'ref-label',x:W-padR,y:y0-6,'text-anchor':'end'}); zLbl.textContent='0% = empata con inflación'; svg.appendChild(zLbl);
+    }
+
+    var slotW = plotW/horizon, barW = slotW*0.58;
+    var y0base = yScale(0);
+    var labelStep = horizon<=10 ? 1 : (horizon<=20 ? 2 : (horizon<=30 ? 5 : 10));
+    var bars = [];
+    result.rows.forEach(function(row){
+      var val = row.annualizedRealPct==null?0:row.annualizedRealPct;
+      var xc = xSlot(row.year);
+      var yTop = yScale(Math.max(val,0)), yBot = yScale(Math.min(val,0));
+      var isOpt = row.year===result.optimalYear;
+      var bar = el('rect',{class:'bar'+(isOpt?' optimal':''), x:(xc-barW/2).toFixed(2), y:yTop.toFixed(2), width:barW.toFixed(2), height:Math.max(1,(yBot-yTop)).toFixed(2), rx:3});
+      svg.appendChild(bar);
+      bars.push({row:row, xc:xc, val:val});
+      if (row.year%labelStep===0 || row.year===horizon || row.year===1){
+        var lx=el('text',{class:'axis-label',x:xc,y:H-padB+16,'text-anchor':'middle'}); lx.textContent=row.year; svg.appendChild(lx);
+      }
+      if (isOpt){
+        var oLbl=el('text',{class:'label-optimal',x:xc,y:yTop-8,'text-anchor':'middle'}); oLbl.textContent='óptimo · '+fmtPct(val); svg.appendChild(oLbl);
+      }
+    });
+    var axisTitle = el('text',{class:'axis-label',x:padL+plotW/2,y:H-4,'text-anchor':'middle'}); axisTitle.textContent='Año de venta'; svg.appendChild(axisTitle);
+
+    var capture = el('rect',{class:'hover-capture',x:padL,y:padT,width:plotW,height:plotH}); svg.appendChild(capture);
+    var tooltip = document.getElementById('tooltip2');
+    var wrap = svg.parentElement;
+
+    function showAt(clientX){
+      var rect = svg.getBoundingClientRect();
+      var scaleX = rect.width/W, scaleY = rect.height/H;
+      var localX = clientX-rect.left;
+      var yearRaw = Math.round(((localX-padL)/plotW)*horizon + 0.5);
+      var year = Math.max(1, Math.min(horizon, yearRaw));
+      var b = bars[year-1];
+      var row = b.row;
+      tooltip.innerHTML = '<div class="t-year">Año '+year+'</div>'+
+        '<div class="t-row"><span>Real anualizado</span><b>'+(row.annualizedRealPct!=null?fmtPct(row.annualizedRealPct):'—')+'</b></div>'+
+        '<div class="t-row"><span>Retorno real total</span><b>'+fmtPct(row.returnRealPct)+'</b></div>'+
+        '<div class="t-row"><span>Ganancia real</span><b>'+fmtUSDsigned(row.netProfitReal)+'</b></div>'+
+        '<div class="t-row"><span>Valor propiedad</span><b>'+fmtUSD0.format(row.propertyValue)+'</b></div>';
+      var left = b.xc*scaleX, top = yScale(Math.max(b.val,0))*scaleY;
+      var wrapWidth = wrap.getBoundingClientRect().width;
+      if (left<95) left=95; if (left>wrapWidth-95) left=wrapWidth-95;
+      tooltip.style.left=left+'px'; tooltip.style.top=Math.max(top,50)+'px';
+      tooltip.classList.add('show');
+    }
+    function hide(){ tooltip.classList.remove('show'); }
+    capture.addEventListener('mousemove', function(e){ showAt(e.clientX); });
+    capture.addEventListener('mouseleave', hide);
+    capture.addEventListener('touchmove', function(e){ if (e.touches&&e.touches[0]){ showAt(e.touches[0].clientX); e.preventDefault(); } }, {passive:false});
+    capture.addEventListener('touchend', hide);
+  }
+
+  function setMode(mode){
+    currentMode = mode;
+    document.getElementById('mode-rent').classList.toggle('active', mode==='rent');
+    document.getElementById('mode-live').classList.toggle('active', mode==='live');
+    document.querySelectorAll('.rent-only').forEach(function(elx){ elx.style.display = mode==='rent' ? '' : 'none'; });
+    document.getElementById('live-note').style.display = mode==='live' ? 'block' : 'none';
+    document.getElementById('cashflow-card').style.display = mode==='rent' ? '' : 'none';
+    document.getElementById('maintenance-hint').textContent = mode==='rent' ? '% de la renta bruta anual' : '% del valor de la propiedad, cada año (regla típica: ~1%)';
+    update();
+  }
+  document.getElementById('mode-rent').addEventListener('click', function(){ setMode('rent'); });
+  document.getElementById('mode-live').addEventListener('click', function(){ setMode('live'); });
+
+  function update(){
+    ids.forEach(function(id){
+      if (sliderFormats[id] && els[id].type==='range'){
+        document.getElementById(id+'-val').textContent = sliderFormats[id](parseFloat(els[id].value));
+      }
+    });
+    var inp = readInputs();
+
+    var us = computeUnitsSummary();
+    inp.monthlyRent = us.rentaTotalReal;
+
+    var realAppr = ((1+inp.appreciationPct/100)/(1+inp.inflationPct/100) - 1) * 100;
+    var apprHintEl = document.getElementById('real-appreciation-hint');
+    apprHintEl.textContent = '≈ apreciación real: ' + (realAppr>=0?'+':'') + realAppr.toFixed(1) + '%/año, después de descontar la inflación';
+    apprHintEl.classList.toggle('pos', realAppr>=0);
+    apprHintEl.classList.toggle('neg', realAppr<0);
+
+    var result = calc(inp);
+    renderHero(result, inp);
+    renderCashflow(result, inp, us);
+    renderTable(result);
+    renderChart1(result);
+    renderChart2(result);
+  }
+
+  ids.forEach(function(id){
+    els[id].addEventListener('input', update);
+    els[id].addEventListener('change', update);
+  });
+
+  // ---- Units setup ----
+  var twoMonthsAgo = new Date(); twoMonthsAgo.setMonth(twoMonthsAgo.getMonth()-2);
+  addUnit('Arriba', 1800, 'paying', null);
+  addUnit('Basement', 700, 'vacant', isoDate(twoMonthsAgo));
+
+  var fiveMonthsAhead = new Date(); fiveMonthsAhead.setMonth(fiveMonthsAhead.getMonth()+5);
+  document.getElementById('lossTargetDate').value = isoDate(fiveMonthsAhead);
+  document.getElementById('lossTargetDate').addEventListener('change', update);
+  document.getElementById('lossTargetDate').addEventListener('input', update);
+
+  document.getElementById('add-unit').addEventListener('click', function(){
+    addUnit('Unidad '+(units.length+1), 0, 'to_rent', null);
+    renderUnits();
+    update();
+  });
+
+  var unitsList = document.getElementById('units-list');
+  unitsList.addEventListener('input', function(e){
+    var row = e.target.closest('.unit-row');
+    if (!row) return;
+    var unit = units.filter(function(u){ return u.id===row.getAttribute('data-id'); })[0];
+    if (!unit) return;
+    if (e.target.classList.contains('unit-name')) unit.name = e.target.value;
+    else if (e.target.classList.contains('unit-rent')) unit.rent = parseFloat(e.target.value)||0;
+    else if (e.target.classList.contains('unit-since')) unit.since = e.target.value;
+    else { return; }
+    update();
+  });
+  unitsList.addEventListener('change', function(e){
+    var row = e.target.closest('.unit-row');
+    if (!row) return;
+    var unit = units.filter(function(u){ return u.id===row.getAttribute('data-id'); })[0];
+    if (!unit) return;
+    if (e.target.classList.contains('unit-status')){
+      unit.status = e.target.value;
+      var needsSince = (unit.status==='occupied_not_paying' || unit.status==='vacant');
+      var sinceWrap = row.querySelector('.unit-since-wrap');
+      sinceWrap.style.display = needsSince ? '' : 'none';
+      if (needsSince && !unit.since){
+        var d = new Date(); d.setMonth(d.getMonth()-1);
+        unit.since = isoDate(d);
+        sinceWrap.querySelector('.unit-since').value = unit.since;
+      }
+      update();
+    } else if (e.target.classList.contains('unit-since')){
+      unit.since = e.target.value;
+      update();
+    }
+  });
+  unitsList.addEventListener('click', function(e){
+    if (!e.target.classList.contains('unit-remove')) return;
+    var row = e.target.closest('.unit-row');
+    var id = row.getAttribute('data-id');
+    if (units.length<=1) return;
+    units = units.filter(function(u){ return u.id!==id; });
+    renderUnits();
+    update();
+  });
+
+  renderUnits();
+  setMode('rent');
+})();
+</script>
