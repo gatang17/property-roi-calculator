@@ -387,10 +387,15 @@
             <input type="range" id="vacancyPct" min="0" max="15" step="1" value="5">
             <span class="hint">Para el modelo de 10-40 años, no para el cash flow de hoy.</span>
           </div>
-          <div class="field">
+          <div class="field rent-only">
             <div class="field-head"><label for="maintenancePct">Reserva de mantenimiento (proyección)</label><output id="maintenancePct-val">8%</output></div>
             <input type="range" id="maintenancePct" min="0" max="20" step="1" value="8">
-            <span class="hint" id="maintenance-hint">% de la renta bruta anual</span>
+            <span class="hint">% de la renta bruta anual</span>
+          </div>
+          <div class="field live-only">
+            <div class="field-head"><label for="maintenancePctLive">Reserva de mantenimiento (proyección)</label><output id="maintenancePctLive-val">1.2%</output></div>
+            <input type="range" id="maintenancePctLive" min="0" max="5" step="0.1" value="1.2">
+            <span class="hint">% del valor de la propiedad, cada año (regla típica: ~1%)</span>
           </div>
           <div class="field rent-only">
             <div class="field-head"><label for="mgmtPct">Property management</label><output id="mgmtPct-val">0%</output></div>
@@ -511,7 +516,7 @@
   var ids = ['purchasePrice','closingCostBuyPct','propertyTaxPct','insuranceAnnual','hoaMonthly',
     'remodelBudget','remodelRoiPct','marginPct','arvTarget',
     'downPaymentPct','interestRate','loanTermYears',
-    'vacancyPct','maintenancePct','mgmtPct','rentIncreasePct','cashReservePct',
+    'vacancyPct','maintenancePct','maintenancePctLive','mgmtPct','rentIncreasePct','cashReservePct',
     'appreciationPct','realtorPct','closingCostSellPct','inflationPct'];
 
   var els = {};
@@ -524,6 +529,7 @@
     interestRate: function(v){ return v.toFixed(3)+'%'; },
     vacancyPct: function(v){ return Math.round(v)+'%'; },
     maintenancePct: function(v){ return Math.round(v)+'%'; },
+    maintenancePctLive: function(v){ return v.toFixed(1)+'%'; },
     mgmtPct: function(v){ return Math.round(v)+'%'; },
     cashReservePct: function(v){ return Math.round(v)+'%'; },
     remodelRoiPct: function(v){ return Math.round(v)+'%'; },
@@ -800,7 +806,7 @@
       interestRate: parseFloat(els.interestRate.value)||0,
       loanTermYears: parseFloat(els.loanTermYears.value)||30,
       vacancyPct: parseFloat(els.vacancyPct.value)||0,
-      maintenancePct: parseFloat(els.maintenancePct.value)||0,
+      maintenancePct: parseFloat((currentMode==='rent' ? els.maintenancePct : els.maintenancePctLive).value)||0,
       mgmtPct: parseFloat(els.mgmtPct.value)||0,
       cashReservePct: parseFloat(els.cashReservePct.value)||0,
       rentIncreasePct: parseFloat(els.rentIncreasePct.value)||0,
@@ -951,6 +957,9 @@
       var av = result.optimalAnnualizedReal;
       optChip = '<span class="chip '+(av>=0?'good':'critical')+'">'+(av>=0?'✓ ':'⚠ ')+fmtPct(av)+' real anualizado</span>';
       optSub = 'Es el año donde el retorno real anualizado (ya descontada la inflación de '+inp.inflationPct.toFixed(2)+'%/año) es más alto — donde tu down payment rinde más eficientemente, no solo donde acumula más ganancia.';
+      if (av < 0){
+        optSub += ' Aun así, ese mejor año sigue siendo negativo en términos reales — no es que sea buen momento para vender, es el menos malo.';
+      }
       if (result.hitCap){
         optSub += ' El retorno real anualizado seguía mejorando hasta el límite de este análisis ('+result.calcCap+' años) — con estos supuestos podría seguir subiendo si retienes aún más tiempo.';
       }
@@ -959,7 +968,8 @@
       optChip = '<span class="chip critical">⚠ Ningún año recupera la inversión en términos reales</span>';
       optSub = 'Con estos supuestos, ningún año dentro de los primeros '+result.calcCap+' recupera la inversión en términos reales.';
     }
-    var diagList = result.optimalYear==null ? diagnoseIssues(inp, result) : [];
+    var showDiag = result.optimalYear==null || result.optimalAnnualizedReal < 0;
+    var diagList = showDiag ? diagnoseIssues(inp, result) : [];
 
     hero.innerHTML =
       '<div class="hero-top">'+
@@ -1239,9 +1249,9 @@
     document.getElementById('mode-rent').classList.toggle('active', mode==='rent');
     document.getElementById('mode-live').classList.toggle('active', mode==='live');
     document.querySelectorAll('.rent-only').forEach(function(elx){ elx.style.display = mode==='rent' ? '' : 'none'; });
+    document.querySelectorAll('.live-only').forEach(function(elx){ elx.style.display = mode==='live' ? '' : 'none'; });
     document.getElementById('live-note').style.display = mode==='live' ? 'block' : 'none';
     document.getElementById('cashflow-card').style.display = mode==='rent' ? '' : 'none';
-    document.getElementById('maintenance-hint').textContent = mode==='rent' ? '% de la renta bruta anual' : '% del valor de la propiedad, cada año (regla típica: ~1%)';
     update();
   }
   document.getElementById('mode-rent').addEventListener('click', function(){ setMode('rent'); });
