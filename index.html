@@ -258,14 +258,14 @@
           <div class="field">
             <label>Estimador de valor por características (opcional)</label>
             <div class="unit-row-fields" style="margin-top:6px;">
-              <div class="input-prefix"><span>m²</span><input type="number" id="lotM2" min="0" step="10" value="0" aria-label="Metros cuadrados del lote"></div>
-              <div class="input-prefix"><span>m²</span><input type="number" id="houseM2" min="0" step="5" value="0" aria-label="Metros cuadrados de construcción"></div>
+              <div class="input-prefix"><span>ft²</span><input type="number" id="lotM2" min="0" step="100" value="0" aria-label="Pies cuadrados del lote"></div>
+              <div class="input-prefix"><span>ft²</span><input type="number" id="houseM2" min="0" step="50" value="0" aria-label="Pies cuadrados de construcción"></div>
             </div>
-            <span class="hint">Lote / construcción, en metros cuadrados</span>
+            <span class="hint">Lote / construcción, en pies cuadrados (sqft) — cópialo directo de cualquier listing</span>
           </div>
           <div class="field">
             <select class="plain" id="zoneType" aria-label="Tipo de zona">
-              <option value="urbana" selected>Zona urbana</option>
+              <option value="urbana" selected>Zona urbana / suburbana</option>
               <option value="prestigio">Zona residencial de prestigio</option>
               <option value="rural">Zona rural o comunitaria</option>
             </select>
@@ -273,9 +273,9 @@
           <div class="field">
             <div class="unit-row-fields">
               <select class="plain" id="materialType" aria-label="Material de construcción">
-                <option value="concreto" selected>Concreto / bloque</option>
-                <option value="ladrillo">Ladrillo</option>
-                <option value="madera">Madera</option>
+                <option value="madera" selected>Wood frame (madera)</option>
+                <option value="ladrillo">Ladrillo / mampostería</option>
+                <option value="concreto">Bloque de concreto</option>
               </select>
               <select class="plain" id="conditionType" aria-label="Condición actual">
                 <option value="buena" selected>Condición buena</option>
@@ -287,10 +287,10 @@
           <div class="field">
             <div class="valuation-box">
               <div class="stat-label">Valor estimado</div>
-              <div class="valuation-value muted" id="valuation-value">Ingresa los metros² para ver una estimación</div>
+              <div class="valuation-value muted" id="valuation-value">Ingresa los pies² para ver una estimación</div>
               <button type="button" class="use-estimate-btn" id="use-estimate-btn" disabled>Usar como valor de reventa objetivo (ARV) →</button>
             </div>
-            <span class="hint">Estimación aproximada con tarifas genéricas por m² — ajusta el ARV manualmente según comparables reales de tu zona (agente local, Zillow, registro de la propiedad).</span>
+            <span class="hint">Estimación aproximada con tarifas genéricas por sqft a nivel nacional de EE.UU. — varían mucho por estado/metro, ajusta el ARV manualmente según comparables reales (Zillow, Redfin, un agente local).</span>
           </div>
 
           <div class="field" style="margin-top:4px;">
@@ -471,7 +471,7 @@
       </div>
 
       <p class="assumptions">
-        <strong>Supuestos del modelo —</strong> el property tax se calcula como % fijo sobre el precio de compra; el seguro y el HOA se mantienen constantes; en modo vivienda el mantenimiento se calcula como % del valor de la propiedad ese año (no de la renta). La proyección de 10-40 años y el año óptimo usan solo la renta <strong>real</strong> (unidades en estado "Pagando" hoy), creciendo cada año a la tasa de aumento de renta — no asume que las unidades vacías u ocupadas sin pagar se resuelvan solas; la renta potencial se muestra aparte, como referencia. El presupuesto de remodelación se asume pagado en efectivo (no se financia con el préstamo) y solo el % de "retorno de la remodelación" se refleja en el valor de reventa proyectado — la apreciación compone sobre ese valor, no sobre el precio de compra original. El estimador de valor por m² usa tarifas genéricas por zona/material/condición, no comparables reales — trátalo como punto de partida, no como tasación. No se modela impuesto sobre la renta ni sobre la ganancia de capital al vender. La ganancia real descuenta la ganancia nominal por la inflación acumulada de cada año (÷ (1+inflación)^año). El "retorno real anualizado" es la tasa de crecimiento compuesta anual de tu down payment en poder adquisitivo real si vendieras ese año — el año óptimo es donde esa tasa es más alta, no necesariamente el primer año en que cruzas el 100%.
+        <strong>Supuestos del modelo —</strong> el property tax se calcula como % fijo sobre el precio de compra; el seguro y el HOA se mantienen constantes; en modo vivienda el mantenimiento se calcula como % del valor de la propiedad ese año (no de la renta). La proyección de 10-40 años y el año óptimo usan solo la renta <strong>real</strong> (unidades en estado "Pagando" hoy), creciendo cada año a la tasa de aumento de renta — no asume que las unidades vacías u ocupadas sin pagar se resuelvan solas; la renta potencial se muestra aparte, como referencia. El presupuesto de remodelación se asume pagado en efectivo (no se financia con el préstamo) y solo el % de "retorno de la remodelación" se refleja en el valor de reventa proyectado — la apreciación compone sobre ese valor, no sobre el precio de compra original. El estimador de valor por sqft usa tarifas genéricas a nivel nacional de EE.UU. por zona/material/condición, no comparables reales de tu estado o metro — trátalo como punto de partida, no como tasación. No se modela impuesto sobre la renta ni sobre la ganancia de capital al vender. La ganancia real descuenta la ganancia nominal por la inflación acumulada de cada año (÷ (1+inflación)^año). El "retorno real anualizado" es la tasa de crecimiento compuesta anual de tu down payment en poder adquisitivo real si vendieras ese año — el año óptimo es donde esa tasa es más alta, no necesariamente el primer año en que cruzas el 100%.
       </p>
     </section>
   </main>
@@ -647,10 +647,13 @@
       alertsHtml;
   }
 
-  // ---- Valuation estimator (rough $/m² model) ----
-  var ZONE_HOUSE_RATE = {urbana:900, prestigio:1400, rural:550};
-  var ZONE_LOT_RATE = {urbana:150, prestigio:300, rural:40};
-  var MATERIAL_MULT = {concreto:1.0, ladrillo:1.05, madera:0.85};
+  // ---- Valuation estimator (rough $/sqft model, US national averages) ----
+  // Solo son punto de partida — el precio por sqft real varía muchísimo entre
+  // estados y hasta entre códigos postales vecinos. Ajusta el ARV a mano con
+  // comparables reales para cualquier decisión seria.
+  var ZONE_HOUSE_RATE = {urbana:170, prestigio:350, rural:110};
+  var ZONE_LOT_RATE = {urbana:12, prestigio:35, rural:2};
+  var MATERIAL_MULT = {madera:1.0, ladrillo:1.08, concreto:1.03};
   var CONDITION_MULT = {buena:1.0, reparar:0.82, remodelada:1.08};
 
   function computeValuation(){
@@ -669,7 +672,7 @@
     var btn = document.getElementById('use-estimate-btn');
     var val = computeValuation();
     if (val==null){
-      display.textContent = 'Ingresa los metros² para ver una estimación';
+      display.textContent = 'Ingresa los pies² para ver una estimación';
       display.classList.add('muted');
       btn.disabled = true;
     } else {
