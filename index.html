@@ -153,6 +153,10 @@
   .hero.collapsed .hero-label{white-space:nowrap;}
   .hero.collapsed .hero-big{font-size:17px;margin:0;}
 
+  .diagnosis-list{margin:10px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink-secondary);line-height:1.6;}
+  .diagnosis-list li{margin-bottom:6px;}
+  .diagnosis-list li:last-child{margin-bottom:0;}
+
   .milestones{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
   @media (max-width:480px){.milestones{grid-template-columns:1fr;}}
   .milestone-value{font-family:var(--font-mono);font-size:15px;font-variant-numeric:tabular-nums;font-weight:600;margin-top:2px;}
@@ -255,13 +259,16 @@
           <h2>2 · Remodelación y valorización</h2>
           <p class="hint" style="margin-bottom:10px;">Aplica igual si rentas la propiedad o si vives en ella — la remodelación afecta el valor y el margen en ambos casos.</p>
 
+          <label style="font-size:13px;color:var(--ink);display:block;margin-bottom:8px;">Estimador de valor por características <span class="hint" style="display:inline;">(opcional)</span></label>
           <div class="field">
-            <label>Estimador de valor por características (opcional)</label>
-            <div class="unit-row-fields" style="margin-top:6px;">
-              <div class="input-prefix"><span>ft²</span><input type="number" id="lotM2" min="0" step="100" value="0" aria-label="Pies cuadrados del lote"></div>
-              <div class="input-prefix"><span>ft²</span><input type="number" id="houseM2" min="0" step="50" value="0" aria-label="Pies cuadrados de construcción"></div>
-            </div>
-            <span class="hint">Lote / construcción, en pies cuadrados (sqft) — cópialo directo de cualquier listing</span>
+            <label for="lotM2">Tamaño del <strong>lote</strong> (terreno completo)</label>
+            <div class="input-prefix"><span>ft²</span><input type="number" id="lotM2" min="0" step="100" value="0"></div>
+            <span class="hint">El terreno entero, casa + patio/jardín. En el listing aparece como "Lot Size".</span>
+          </div>
+          <div class="field">
+            <label for="houseM2">Tamaño de la <strong>casa construida</strong></label>
+            <div class="input-prefix"><span>ft²</span><input type="number" id="houseM2" min="0" step="50" value="0"></div>
+            <span class="hint">Solo el área habitable bajo techo (siempre es menor que el lote). En el listing aparece como "Living Area" o "Square Footage".</span>
           </div>
           <div class="field">
             <select class="plain" id="zoneType" aria-label="Tipo de zona">
@@ -298,9 +305,9 @@
             <div class="input-prefix"><span>$</span><input type="number" id="remodelBudget" min="0" step="500" value="0"></div>
           </div>
           <div class="field">
-            <div class="field-head"><label for="remodelRoiPct">Retorno de la remodelación</label><output id="remodelRoiPct-val">70%</output></div>
+            <div class="field-head"><label for="remodelRoiPct">¿Cuánto de eso se recupera al vender?</label><output id="remodelRoiPct-val">70%</output></div>
             <input type="range" id="remodelRoiPct" min="0" max="120" step="5" value="70">
-            <span class="hint">% de lo gastado en arreglos que se refleja en el valor de reventa — casi nunca es 100%.</span>
+            <span class="hint">Casi ninguna remodelación devuelve el 100%. Ejemplo con 70%: gastas $10,000 en arreglos → el valor de la casa sube $7,000, no $10,000 — los otros $3,000 son gusto personal, no inversión recuperable.</span>
           </div>
           <div class="field">
             <div class="field-head"><label for="marginPct">Margen de ganancia deseado</label><output id="marginPct-val">20%</output></div>
@@ -308,13 +315,9 @@
             <span class="hint">% sobre el precio de compra</span>
           </div>
           <div class="field">
-            <label for="flipYear">Año de venta a evaluar</label>
-            <input type="number" id="flipYear" min="1" max="40" step="1" value="1">
-            <span class="hint">Ej. 1 si planeas vivirla y venderla al año</span>
-          </div>
-          <div class="field">
             <label for="arvTarget">Valor de reventa objetivo (ARV)</label>
             <div class="input-prefix"><span>$</span><input type="number" id="arvTarget" min="0" step="1000" value="400000"></div>
+            <span class="hint">Usa el botón de arriba para copiar el valor estimado, o pon el precio que crees que pedirías al vender.</span>
           </div>
         </section>
 
@@ -419,7 +422,6 @@
 
       <div class="card" id="flip-card">
         <h2>Presupuesto de remodelación y margen de flip</h2>
-        <p class="sub">Comprar, arreglar y vender en el año elegido — aplica igual si rentas mientras tanto o si vives en ella.</p>
         <div id="flip-body"></div>
       </div>
 
@@ -489,7 +491,7 @@
   var heroCollapsed = false;
 
   var ids = ['purchasePrice','closingCostBuyPct','propertyTaxPct','insuranceAnnual','hoaMonthly',
-    'remodelBudget','remodelRoiPct','marginPct','flipYear','arvTarget',
+    'remodelBudget','remodelRoiPct','marginPct','arvTarget',
     'downPaymentPct','interestRate','loanTermYears',
     'vacancyPct','maintenancePct','mgmtPct','rentIncreasePct','cashReservePct',
     'appreciationPct','realtorPct','closingCostSellPct','inflationPct'];
@@ -683,9 +685,11 @@
     }
   }
 
-  // ---- Flip margin solver (año elegido, con o sin renta) ----
+  // ---- Flip margin solver — usa el año óptimo ya calculado, no lo elige el usuario ----
   function computeFlipMargin(inp, result){
-    var Y = Math.max(1, Math.min(Math.round(inp.flipYear)||1, result.rows.length));
+    var usedFallback = result.optimalYear==null;
+    var targetYear = usedFallback ? 1 : result.optimalYear;
+    var Y = Math.max(1, Math.min(targetYear, result.rows.length));
     var row = result.rows[Y-1];
     var sellPct = (inp.realtorPct + inp.closingCostSellPct)/100;
     var desiredProfitAmount = inp.marginPct/100 * inp.purchasePrice;
@@ -697,7 +701,8 @@
     return {
       Y: Y, row: row, sellPct: sellPct, desiredProfitAmount: desiredProfitAmount,
       totalCashInvested: totalCashInvested, requiredSalePrice: requiredSalePrice,
-      arv: inp.arvTarget, maxRemodelBudget: maxRemodelBudget, diff: maxRemodelBudget - inp.remodelBudget
+      arv: inp.arvTarget, maxRemodelBudget: maxRemodelBudget, diff: maxRemodelBudget - inp.remodelBudget,
+      usedFallback: usedFallback
     };
   }
 
@@ -710,8 +715,12 @@
       ? '<span class="chip good">✓ Dentro del presupuesto — margen extra de '+fmtUSD0.format(flip.diff)+'</span>'
       : '<span class="chip critical">⚠ Excede el presupuesto recomendado por '+fmtUSD0.format(Math.abs(flip.diff))+'</span>';
 
+    var yearNote = flip.usedFallback
+      ? '<p class="cf-note" style="color:var(--critical)">⚠ No hay un año con retorno real positivo (ver el diagnóstico arriba) — estos números son para el año 1, solo como referencia.</p>'
+      : '<p class="sub" style="margin-bottom:12px;">Calculado automáticamente para el <strong style="color:var(--ink)">año óptimo (año '+flip.Y+')</strong> que ya calculó la app arriba.</p>';
+
     var statsHtml =
-      stat('Precio de venta necesario (año '+flip.Y+')', fmtUSD0.format(flip.requiredSalePrice)) +
+      stat('Precio de venta necesario', fmtUSD0.format(flip.requiredSalePrice)) +
       stat('Presupuesto máximo de remodelación', fmtUSD0.format(Math.max(0,flip.maxRemodelBudget))) +
       stat('Presupuesto planeado', fmtUSD0.format(inp.remodelBudget)) +
       stat('Margen deseado', fmtPct(inp.marginPct,0)+' del precio de compra') +
@@ -719,9 +728,39 @@
       stat('Costos de venta estimados', fmtPct(flip.sellPct*100,1)+' del precio de venta');
 
     body.innerHTML =
+      yearNote+
       '<div style="margin-bottom:14px;">'+compareChip+'</div>'+
       '<div class="flip-grid">'+statsHtml+'</div>'+
-      '<p class="cf-note">"Precio de venta necesario" es lo que tendrías que cobrar en el año '+flip.Y+' para lograr tu margen deseado, dado tu presupuesto de remodelación planeado ('+fmtUSD0.format(inp.remodelBudget)+'). "Presupuesto máximo" es lo contrario: cuánto podrías gastar en arreglos sin perder ese margen, dado tu valor de reventa objetivo (ARV) de '+fmtUSD0.format(flip.arv)+'. Ninguno de los dos asume la apreciación del mercado — son precios objetivo que dependen de lo que el comprador esté dispuesto a pagar, no proyecciones.</p>';
+      '<p class="cf-note">"Precio de venta necesario" es lo que tendrías que cobrar para lograr tu margen deseado, dado tu presupuesto de remodelación planeado ('+fmtUSD0.format(inp.remodelBudget)+'). "Presupuesto máximo" es lo contrario: cuánto podrías gastar en arreglos sin perder ese margen, dado tu valor de reventa objetivo (ARV) de '+fmtUSD0.format(flip.arv)+'. Ninguno de los dos asume la apreciación del mercado — son precios objetivo que dependen de lo que el comprador esté dispuesto a pagar, no proyecciones.</p>';
+  }
+
+  // ---- Diagnóstico: por qué ningún año recupera la inversión ----
+  function diagnoseIssues(inp, result){
+    var issues = [];
+    var row1 = result.rows[0];
+    var realAppr = ((1+inp.appreciationPct/100)/(1+inp.inflationPct/100) - 1) * 100;
+
+    if (realAppr < 0){
+      issues.push('Tu apreciación esperada ('+fmtPct(inp.appreciationPct,1)+'/año) es menor que tu inflación esperada ('+fmtPct(inp.inflationPct,2)+'/año) — en poder adquisitivo real, la casa está perdiendo cerca de '+fmtPct(Math.abs(realAppr),1)+'/año, no ganando.');
+    }
+    var txnCostPct = inp.closingCostBuyPct + inp.realtorPct + inp.closingCostSellPct;
+    if (txnCostPct >= 8){
+      issues.push('Tus costos de transacción suman '+fmtPct(txnCostPct,1)+' del valor de la propiedad (cierre al comprar + comisión de realtor + cierre al vender) — eso es lo primero que cualquier ganancia tiene que cubrir antes de dejarte algo a ti.');
+    }
+    if (row1.netCashFlow < 0){
+      var monthlyLoss = Math.abs(row1.netCashFlow/12);
+      issues.push((inp.mode==='live' ? 'Vives en la propiedad, así que no hay renta que compense el gasto mensual: ' : 'La propiedad genera cash flow negativo: ') + 'pierdes aproximadamente '+fmtUSD0.format(monthlyLoss)+'/mes — cada mes que la retienes le resta a tu ganancia final en vez de sumarle.');
+    }
+    if (inp.remodelBudget>0 && inp.remodelRoiPct<100){
+      var lost = inp.remodelBudget*(1-inp.remodelRoiPct/100);
+      if (lost > inp.purchasePrice*0.01){
+        issues.push('Vas a gastar '+fmtUSD0.format(inp.remodelBudget)+' en remodelar, pero solo el '+fmtPct(inp.remodelRoiPct,0)+' se refleja en el valor de reventa — pierdes '+fmtUSD0.format(lost)+' que no vuelve.');
+      }
+    }
+    if (inp.downPaymentPct < 15){
+      issues.push('Tu down payment es bajo ('+fmtPct(inp.downPaymentPct,0)+') — eso magnifica todo lo demás: los mismos costos de cierre en dólares representan un % mucho mayor de tu inversión inicial.');
+    }
+    return issues;
   }
 
   function readInputs(){
@@ -734,7 +773,6 @@
       remodelBudget: parseFloat(els.remodelBudget.value)||0,
       remodelRoiPct: parseFloat(els.remodelRoiPct.value)||0,
       marginPct: parseFloat(els.marginPct.value)||0,
-      flipYear: parseFloat(els.flipYear.value)||1,
       arvTarget: parseFloat(els.arvTarget.value)||0,
       downPaymentPct: parseFloat(els.downPaymentPct.value)||0,
       interestRate: parseFloat(els.interestRate.value)||0,
@@ -897,8 +935,9 @@
     } else {
       optBig = '—';
       optChip = '<span class="chip critical">⚠ Ningún año recupera la inversión en términos reales</span>';
-      optSub = 'Con estos supuestos, la apreciación y la renta no alcanzan a superar la inflación de '+inp.inflationPct.toFixed(2)+'%/año en ningún año dentro de los primeros '+result.calcCap+'.';
+      optSub = 'Con estos supuestos, ningún año dentro de los primeros '+result.calcCap+' recupera la inversión en términos reales.';
     }
+    var diagList = result.optimalYear==null ? diagnoseIssues(inp, result) : [];
 
     hero.innerHTML =
       '<div class="hero-top">'+
@@ -912,6 +951,7 @@
       '</div>'+
       '<div class="hero-detail" id="hero-detail">'+
         '<div class="hero-sub">'+optSub+'</div>'+
+        (diagList.length ? '<p class="hero-sub" style="margin-top:8px;"><strong style="color:var(--ink)">Esto es lo que más está pesando:</strong></p><ul class="diagnosis-list">'+diagList.map(function(d){return '<li>'+d+'</li>';}).join('')+'</ul>' : '')+
         '<div class="milestones">'+
           milestoneHtml('Duplicar down payment (nominal)', result.crossNominalYear, result.calcCap)+
           milestoneHtml('Duplicar poder adquisitivo (real)', result.crossRealYear, result.calcCap)+
