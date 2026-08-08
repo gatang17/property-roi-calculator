@@ -219,19 +219,46 @@
   .assumptions{margin-top:16px;font-size:12px;color:var(--ink-muted);line-height:1.6;max-width:84ch;}
   .assumptions strong{color:var(--ink-secondary);}
 
+  .goal-card{border:1.5px solid var(--accent);background:var(--accent-tint);}
+  .goal-card h2{font-family:var(--font-display) !important;font-size:16px !important;font-weight:600 !important;text-transform:none !important;letter-spacing:0 !important;color:var(--ink) !important;border-bottom:none !important;padding-bottom:0 !important;margin-bottom:10px !important;}
+  .goal-result-card{border:1.5px solid var(--accent);}
+  .goal-result-card h2{font-size:16px;}
+  .goal-table{border-collapse:collapse;width:100%;margin-top:12px;}
+  .goal-table th{text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--ink-muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--border-strong);}
+  .goal-table th:first-child, .goal-table td:first-child{text-align:left;}
+  .goal-table td{text-align:right;padding:6px 10px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12.5px;border-bottom:1px solid var(--border);}
+  .goal-table tr.row-hit td{background:var(--good-bg);}
+
   @media (prefers-reduced-motion: reduce){.tooltip{transition:none;}}
 </style>
 
 <div class="app">
   <header class="topbar">
-    <span class="eyebrow">Propiedad de inversión o vivienda · con o sin remodelación · análisis en dólares reales</span>
+    <span class="eyebrow">Propiedad de inversión o vivienda · con o sin remodelación</span>
     <h1>Tu casa es un activo: ¿cuál es el momento óptimo para venderla?</h1>
-    <p>La rentes, la vivas, la remodeles o no — sigue siendo dinero que puedes recuperar, pero venderla en el momento equivocado puede convertir la ganancia en pérdida. Estima el valor de la propiedad, calcula cuánto conviene invertir en arreglos, y compara el retorno nominal contra el real (ya descontada la inflación) para encontrar el año en que tu dinero rinde más.</p>
+    <p>Empieza por la tarjeta 🎯 <strong>Tu meta de venta</strong>: dinos a qué precio (o a qué múltiplo de lo que pagaste) quieres vender, y te decimos directamente en qué año ya te conviene — sin que tengas que adivinar cuánto va a subir el valor de la casa. Más abajo, si quieres, puedes explorar una proyección más detallada que sí asume una tasa de apreciación (nominal vs. real, ya descontada la inflación) — es opcional, no es lo que necesitas para la pregunta básica de "¿en cuánto la vendo?".</p>
   </header>
 
   <main class="layout">
     <aside class="inputs" aria-label="Datos de entrada">
       <form id="calc-form">
+        <section class="card goal-card">
+          <h2>🎯 Tu meta de venta</h2>
+          <div class="mode-toggle" role="tablist">
+            <button type="button" class="mode-btn active" id="goal-multiple-btn">Múltiplo de lo que pagué</button>
+            <button type="button" class="mode-btn" id="goal-exact-btn">Precio exacto</button>
+          </div>
+          <div class="field" id="goal-multiple-field">
+            <div class="field-head"><label for="goalMultiplier">Vender a ___ veces el precio de compra</label><output id="goalMultiplier-val">1.50x</output></div>
+            <input type="range" id="goalMultiplier" min="1" max="3" step="0.05" value="1.5">
+          </div>
+          <div class="field" id="goal-exact-field" style="display:none;">
+            <label for="goalExactPrice">Precio de venta exacto</label>
+            <div class="input-prefix"><span>$</span><input type="number" id="goalExactPrice" min="0" step="1000" value="350000"></div>
+          </div>
+          <span class="hint">No necesitas adivinar ningún % de apreciación — dinos directamente a qué precio quieres vender, y te decimos en qué año ya te conviene (abajo, en "¿Cuándo conviene vender?").</span>
+        </section>
+
         <section class="card">
           <h2>1 · Propiedad</h2>
           <div class="field">
@@ -436,6 +463,11 @@
     </aside>
 
     <section class="results">
+      <div class="card goal-result-card" id="goal-result-card">
+        <h2 id="goal-result-title">¿Cuándo conviene vender?</h2>
+        <div id="goal-result-body"></div>
+      </div>
+
       <div class="card hero" id="hero"></div>
 
       <div class="card" id="cashflow-card">
@@ -513,7 +545,8 @@
   var currentMode = 'rent';
   var heroCollapsed = false;
 
-  var ids = ['purchasePrice','closingCostBuyPct','propertyTaxPct','insuranceAnnual','hoaMonthly',
+  var ids = ['goalMultiplier','goalExactPrice',
+    'purchasePrice','closingCostBuyPct','propertyTaxPct','insuranceAnnual','hoaMonthly',
     'remodelBudget','remodelRoiPct','marginPct','arvTarget',
     'downPaymentPct','interestRate','loanTermYears',
     'vacancyPct','maintenancePct','maintenancePctLive','mgmtPct','rentIncreasePct','cashReservePct',
@@ -523,6 +556,7 @@
   ids.forEach(function(id){ els[id] = document.getElementById(id); });
 
   var sliderFormats = {
+    goalMultiplier: function(v){ return v.toFixed(2)+'x'; },
     closingCostBuyPct: function(v){ return v.toFixed(2)+'%'; },
     propertyTaxPct: function(v){ return v.toFixed(2)+'%'; },
     downPaymentPct: function(v){ return Math.round(v)+'%'; },
@@ -791,8 +825,74 @@
     return issues;
   }
 
+  // ---- Meta de venta: precio fijo que TÚ eliges, sin depender de ningún % de apreciación ----
+  var goalMode = 'multiple';
+
+  function computeGoalTable(inp, result){
+    var saleValue = goalMode==='exact' ? inp.goalExactPrice : inp.purchasePrice * inp.goalMultiplier;
+    var sellPct = (inp.realtorPct + inp.closingCostSellPct)/100;
+    var totalInvested = result.downPayment + result.closingCostsBuy + inp.remodelBudget;
+
+    var rows = result.rowsFull.map(function(r){
+      var profit = (saleValue - r.loanBalance - saleValue*sellPct) + r.cashFlowCum - totalInvested;
+      return { year: r.year, profit: profit, positive: profit>=0 };
+    });
+
+    var firstPositiveYear = null;
+    for (var i=0;i<rows.length;i++){ if (rows[i].positive){ firstPositiveYear = rows[i].year; break; } }
+    var displayHorizon = firstPositiveYear!=null ? Math.min(rows.length, firstPositiveYear+2) : Math.min(rows.length, 10);
+    displayHorizon = Math.max(displayHorizon, Math.min(rows.length, 5));
+
+    return {
+      saleValue: saleValue, sellPct: sellPct, totalInvested: totalInvested,
+      rows: rows.slice(0, displayHorizon), firstPositiveYear: firstPositiveYear, calcCap: result.calcCap
+    };
+  }
+
+  function renderGoalCard(result, goal, inp){
+    var title = document.getElementById('goal-result-title');
+    var body = document.getElementById('goal-result-body');
+    if (!title || !body) return;
+
+    title.textContent = '¿Cuándo conviene vender a '+fmtUSD0.format(goal.saleValue)+'?';
+
+    var topHtml;
+    if (goal.firstPositiveYear!=null){
+      topHtml =
+        '<div class="hero-top" style="margin-bottom:4px;">'+
+          '<div class="hero-top-main"><span class="hero-label">A partir de</span>'+
+            '<div class="hero-big">Año '+goal.firstPositiveYear+'</div>'+
+          '</div>'+
+          '<span class="chip good">✓ Ya da ganancia</span>'+
+        '</div>'+
+        '<div class="hero-sub">Vendiendo a '+fmtUSD0.format(goal.saleValue)+' en el año '+goal.firstPositiveYear+' o después, recuperas tu inversión y te queda ganancia — sin asumir ninguna subida de precio, solo con lo que ya sabes: cuánto pagarías, cuánto debes del préstamo, y cuánto gastas/cobras mientras la tienes.</div>';
+    } else {
+      topHtml =
+        '<div class="hero-top" style="margin-bottom:4px;">'+
+          '<div class="hero-top-main"><span class="hero-label">A partir de</span>'+
+            '<div class="hero-big">—</div>'+
+          '</div>'+
+          '<span class="chip critical">⚠ Ni en '+goal.calcCap+' años</span>'+
+        '</div>'+
+        '<div class="hero-sub">Ni siquiera vendiendo a '+fmtUSD0.format(goal.saleValue)+' recuperas tu inversión dentro de '+goal.calcCap+' años — ese precio no alcanza a cubrir lo que pagaste más lo que gastas en tenerla. Sube el múltiplo/precio objetivo, o revisa tus costos mensuales.</div>';
+    }
+
+    var tableRows = goal.rows.map(function(r){
+      var isHit = r.year===goal.firstPositiveYear;
+      return '<tr'+(isHit?' class="row-hit"':'')+'>'+
+        '<td>Año '+r.year+'</td>'+
+        '<td class="'+(r.profit>=0?'pos':'neg')+'">'+fmtUSDsigned(r.profit)+(isHit?'<span class="hit-chip">✓ ya conviene</span>':'')+'</td>'+
+      '</tr>';
+    }).join('');
+
+    body.innerHTML = topHtml +
+      '<table class="goal-table"><thead><tr><th>Año</th><th>Ganancia si vendes a '+fmtUSD0.format(goal.saleValue)+'</th></tr></thead><tbody>'+tableRows+'</tbody></table>';
+  }
+
   function readInputs(){
     return {
+      goalMultiplier: parseFloat(els.goalMultiplier.value)||1,
+      goalExactPrice: parseFloat(els.goalExactPrice.value)||0,
       purchasePrice: parseFloat(els.purchasePrice.value)||0,
       closingCostBuyPct: parseFloat(els.closingCostBuyPct.value)||0,
       propertyTaxPct: parseFloat(els.propertyTaxPct.value)||0,
@@ -926,7 +1026,7 @@
 
     return {
       downPayment: downPayment, loanAmount: loanAmount, closingCostsBuy: closingCostsBuy,
-      monthlyPI: M, piti: piti, rows: rows.slice(0, horizon), horizon: horizon, calcCap: CALC_CAP, hitCap: hitCap,
+      monthlyPI: M, piti: piti, rows: rows.slice(0, horizon), rowsFull: rows, horizon: horizon, calcCap: CALC_CAP, hitCap: hitCap,
       crossNominalYear: crossNominalYear, crossRealYear: crossRealYear,
       optimalYear: optimalYear, optimalAnnualizedReal: optimalYear!=null?bestVal:null
     };
@@ -1257,6 +1357,17 @@
   document.getElementById('mode-rent').addEventListener('click', function(){ setMode('rent'); });
   document.getElementById('mode-live').addEventListener('click', function(){ setMode('live'); });
 
+  function setGoalMode(mode){
+    goalMode = mode;
+    document.getElementById('goal-multiple-btn').classList.toggle('active', mode==='multiple');
+    document.getElementById('goal-exact-btn').classList.toggle('active', mode==='exact');
+    document.getElementById('goal-multiple-field').style.display = mode==='multiple' ? '' : 'none';
+    document.getElementById('goal-exact-field').style.display = mode==='exact' ? '' : 'none';
+    update();
+  }
+  document.getElementById('goal-multiple-btn').addEventListener('click', function(){ setGoalMode('multiple'); });
+  document.getElementById('goal-exact-btn').addEventListener('click', function(){ setGoalMode('exact'); });
+
   function update(){
     ids.forEach(function(id){
       if (sliderFormats[id] && els[id].type==='range'){
@@ -1275,6 +1386,7 @@
     apprHintEl.classList.toggle('neg', realAppr<0);
 
     var result = calc(inp);
+    renderGoalCard(result, computeGoalTable(inp, result), inp);
     renderHero(result, inp);
     renderCashflow(result, inp, us);
     renderFlipCard(result, computeFlipMargin(inp, result), inp);
