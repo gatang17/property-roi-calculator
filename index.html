@@ -380,6 +380,21 @@
           </div>
         </section>
 
+        <section class="card goal-card">
+          <h2>💳 ¿Calificas para el préstamo?</h2>
+          <div class="field">
+            <label for="annualIncome">Ingreso bruto anual (household)</label>
+            <div class="input-prefix"><span>$</span><input type="number" id="annualIncome" min="0" step="1000" value="80000"></div>
+            <span class="hint">Los bancos piden ~2 años de historial (tax returns / W-2s) para verificar este número — aquí solo necesitas el estimado.</span>
+          </div>
+          <div class="field">
+            <label for="otherMonthlyDebts">Otras deudas mensuales</label>
+            <div class="input-prefix"><span>$</span><input type="number" id="otherMonthlyDebts" min="0" step="50" value="0"></div>
+            <span class="hint">Carro, tarjetas, préstamo estudiantil, etc. — no incluyas la hipoteca de esta casa, esa ya se calcula aparte.</span>
+          </div>
+          <span class="hint">Estimado con reglas de préstamo convencional tradicional (no FHA): máximo 28% del ingreso para la casa, 36% del ingreso total incluyendo deudas.</span>
+        </section>
+
         <section class="card">
           <h2>4 · Renta y tenencia</h2>
           <div class="field rent-only">
@@ -447,6 +462,11 @@
     </aside>
 
     <section class="results">
+      <div class="card goal-result-card" id="qual-card">
+        <h2>💳 Verificación de ingreso</h2>
+        <div id="qual-body"></div>
+      </div>
+
       <div class="card goal-result-card" id="goal-result-card">
         <h2 id="goal-result-title">¿Cuándo conviene vender?</h2>
         <div id="goal-result-body"></div>
@@ -524,7 +544,7 @@
   var currentMode = 'rent';
   var heroCollapsed = false;
 
-  var ids = ['goalMultiplier','goalExactPrice','availableCash',
+  var ids = ['goalMultiplier','goalExactPrice','availableCash','annualIncome','otherMonthlyDebts',
     'purchasePrice','closingCostBuyPct','propertyTaxPct','insuranceAnnual','hoaMonthly',
     'remodelBudget','remodelRoiPct',
     'downPaymentPct','interestRate','loanTermYears',
@@ -764,6 +784,71 @@
     };
   }
 
+  // ---- Verificación de ingreso (pre-calificación, préstamo convencional tradicional) ----
+  // Reglas clásicas de DTI (debt-to-income), no FHA: 28% del ingreso bruto
+  // para la casa (front-end), 36% del ingreso bruto total con deudas (back-end).
+  var FRONT_END_MAX = 0.28, BACK_END_MAX = 0.36;
+
+  function computeQualification(inp, result){
+    var monthlyIncome = inp.annualIncome/12;
+    var maxFrontPITI = FRONT_END_MAX * monthlyIncome;
+    var maxPITIFromBack = BACK_END_MAX*monthlyIncome - inp.otherMonthlyDebts;
+    var maxAllowedPITI = Math.max(0, Math.min(maxFrontPITI, maxPITIFromBack));
+    var bindingRule = maxFrontPITI <= maxPITIFromBack ? 'front' : 'back';
+
+    var qualifies = result.piti <= maxAllowedPITI;
+    var cushion = maxAllowedPITI - result.piti;
+    var frontPctUsed = monthlyIncome>0 ? (result.piti/monthlyIncome*100) : 0;
+    var backPctUsed = monthlyIncome>0 ? ((result.piti+inp.otherMonthlyDebts)/monthlyIncome*100) : 0;
+
+    // precio máximo que el ingreso soporta (despeje lineal: PITI(precio) es lineal en precio)
+    var r = inp.interestRate/100/12;
+    var n = Math.round(inp.loanTermYears*12);
+    var amortFactor = n<=0 ? 0 : (r===0 ? 1/n : r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
+    var denom = (1-inp.downPaymentPct/100)*amortFactor + (inp.propertyTaxPct/100)/12;
+    var maxPriceByIncome = denom>0 ? Math.max(0, (maxAllowedPITI - inp.insuranceAnnual/12 - inp.hoaMonthly) / denom) : 0;
+
+    // precio máximo que el efectivo disponible soporta (down payment + closing costs)
+    var cashPct = (inp.downPaymentPct/100) + (inp.closingCostBuyPct/100);
+    var maxPriceByCash = cashPct>0 ? inp.availableCash/cashPct : Infinity;
+
+    var maxPrice = Math.min(maxPriceByIncome, maxPriceByCash);
+    var bindingConstraint = maxPriceByIncome <= maxPriceByCash ? 'income' : 'cash';
+
+    return {
+      monthlyIncome: monthlyIncome, maxAllowedPITI: maxAllowedPITI, qualifies: qualifies, cushion: cushion,
+      frontPctUsed: frontPctUsed, backPctUsed: backPctUsed, bindingRule: bindingRule,
+      maxPriceByIncome: maxPriceByIncome, maxPriceByCash: maxPriceByCash,
+      maxPrice: maxPrice, bindingConstraint: bindingConstraint
+    };
+  }
+
+  function renderQualCard(result, qual, inp){
+    var body = document.getElementById('qual-body');
+    if (!body) return;
+
+    var chip = qual.qualifies
+      ? '<span class="chip good">✓ Calificas</span>'
+      : '<span class="chip critical">⚠ No calificas con este ingreso</span>';
+
+    var statsHtml =
+      stat('Pago mensual de esta casa (PITI)', fmtUSD0.format(result.piti)) +
+      stat('Máximo que tu ingreso permite', fmtUSD0.format(qual.maxAllowedPITI)) +
+      stat(qual.cushion>=0?'Colchón mensual':'Te excedes por', fmtUSD0.format(Math.abs(qual.cushion))+'/mes', qual.cushion>=0?'pos':'neg') +
+      stat('% de tu ingreso en la casa', fmtPct(qual.frontPctUsed,1)+' (máx. 28%)', qual.frontPctUsed<=28?'pos':'neg') +
+      stat('% de tu ingreso en deudas totales', fmtPct(qual.backPctUsed,1)+' (máx. 36%)', qual.backPctUsed<=36?'pos':'neg');
+
+    var maxPriceNote = qual.bindingConstraint==='income'
+      ? 'tu ingreso es lo que más te limita — con más down payment no comprarías una casa más cara, necesitarías ganar más o tener menos deudas.'
+      : 'tu efectivo disponible es lo que más te limita — con más ingreso no comprarías una casa más cara, necesitarías más dinero para el down payment y cierre.';
+
+    body.innerHTML =
+      '<div class="hero-top" style="margin-bottom:14px;">'+chip+'</div>'+
+      '<div class="cf-grid">'+statsHtml+'</div>'+
+      '<p class="cf-note">Precio máximo de casa que podrías comprar hoy: <b style="font-family:var(--font-mono);color:var(--ink)">'+fmtUSD0.format(qual.maxPrice)+'</b> — '+maxPriceNote+'</p>'+
+      '<p class="cf-note">Estimado con reglas tradicionales de préstamo convencional (28% / 36% del ingreso bruto) — no es una pre-aprobación real; cada banco tiene sus propios límites y compensating factors.</p>';
+  }
+
   var RED_FLAG_YEARS = 7;
 
   function renderGoalCard(result, goal, inp){
@@ -830,6 +915,8 @@
       goalMultiplier: parseFloat(els.goalMultiplier.value)||1,
       goalExactPrice: parseFloat(els.goalExactPrice.value)||0,
       availableCash: parseFloat(els.availableCash.value)||0,
+      annualIncome: parseFloat(els.annualIncome.value)||0,
+      otherMonthlyDebts: parseFloat(els.otherMonthlyDebts.value)||0,
       purchasePrice: parseFloat(els.purchasePrice.value)||0,
       closingCostBuyPct: parseFloat(els.closingCostBuyPct.value)||0,
       propertyTaxPct: parseFloat(els.propertyTaxPct.value)||0,
@@ -1323,6 +1410,7 @@
     apprHintEl.classList.toggle('neg', realAppr<0);
 
     var result = calc(inp);
+    renderQualCard(result, computeQualification(inp, result), inp);
     renderGoalCard(result, computeGoalTable(inp, result), inp);
     renderHero(result, inp);
     renderCashflow(result, inp, us);
