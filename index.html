@@ -363,8 +363,16 @@
         <section class="card">
           <h2>3 · Préstamo</h2>
           <div class="field">
+            <label>Tipo de préstamo</label>
+            <div class="mode-toggle" role="tablist">
+              <button type="button" class="mode-btn active" id="loan-conventional-btn">Convencional</button>
+              <button type="button" class="mode-btn" id="loan-fha-btn">FHA</button>
+            </div>
+            <p class="hint" id="loan-type-note" style="margin-top:8px;">Down payment típico 20%+ para evitar seguro hipotecario privado (PMI, no modelado aquí).</p>
+          </div>
+          <div class="field">
             <div class="field-head"><label for="downPaymentPct">Down payment</label><output id="downPaymentPct-val">25%</output></div>
-            <input type="range" id="downPaymentPct" min="5" max="50" step="1" value="25">
+            <input type="range" id="downPaymentPct" min="3.5" max="50" step="0.5" value="25">
           </div>
           <div class="field">
             <div class="field-head"><label for="interestRate">Tasa de interés anual</label><output id="interestRate-val">7.000%</output></div>
@@ -392,7 +400,7 @@
             <div class="input-prefix"><span>$</span><input type="number" id="otherMonthlyDebts" min="0" step="50" value="0"></div>
             <span class="hint">Carro, tarjetas, préstamo estudiantil, etc. — no incluyas la hipoteca de esta casa, esa ya se calcula aparte.</span>
           </div>
-          <span class="hint">Estimado con reglas de préstamo convencional tradicional (no FHA): máximo 28% del ingreso para la casa, 36% del ingreso total incluyendo deudas.</span>
+          <span class="hint" id="dti-rule-note">Estimado con reglas tradicionales de préstamo convencional: máximo 28% del ingreso para la casa, 36% del ingreso total incluyendo deudas.</span>
         </section>
 
         <section class="card">
@@ -558,7 +566,7 @@
     goalMultiplier: function(v){ return v.toFixed(2)+'x'; },
     closingCostBuyPct: function(v){ return v.toFixed(2)+'%'; },
     propertyTaxPct: function(v){ return v.toFixed(2)+'%'; },
-    downPaymentPct: function(v){ return Math.round(v)+'%'; },
+    downPaymentPct: function(v){ return (v%1===0 ? v.toFixed(0) : v.toFixed(1))+'%'; },
     interestRate: function(v){ return v.toFixed(3)+'%'; },
     vacancyPct: function(v){ return Math.round(v)+'%'; },
     maintenancePct: function(v){ return Math.round(v)+'%'; },
@@ -762,6 +770,7 @@
 
   // ---- Meta de venta: precio fijo que TÚ eliges, sin depender de ningún % de apreciación ----
   var goalMode = 'multiple';
+  var loanType = 'conventional';
 
   function computeGoalTable(inp, result){
     var saleValue = goalMode==='exact' ? inp.goalExactPrice : inp.purchasePrice * inp.goalMultiplier;
@@ -784,15 +793,19 @@
     };
   }
 
-  // ---- Verificación de ingreso (pre-calificación, préstamo convencional tradicional) ----
-  // Reglas clásicas de DTI (debt-to-income), no FHA: 28% del ingreso bruto
-  // para la casa (front-end), 36% del ingreso bruto total con deudas (back-end).
-  var FRONT_END_MAX = 0.28, BACK_END_MAX = 0.36;
+  // ---- Verificación de ingreso (pre-calificación) ----
+  // Reglas clásicas de DTI (debt-to-income): convencional tradicional 28%/36%;
+  // FHA es más flexible, tradicionalmente 31%/43% del ingreso bruto.
+  var DTI_LIMITS = {
+    conventional: { front: 0.28, back: 0.36 },
+    fha: { front: 0.31, back: 0.43 }
+  };
 
   function computeQualification(inp, result){
+    var limits = DTI_LIMITS[inp.loanType] || DTI_LIMITS.conventional;
     var monthlyIncome = inp.annualIncome/12;
-    var maxFrontPITI = FRONT_END_MAX * monthlyIncome;
-    var maxPITIFromBack = BACK_END_MAX*monthlyIncome - inp.otherMonthlyDebts;
+    var maxFrontPITI = limits.front * monthlyIncome;
+    var maxPITIFromBack = limits.back*monthlyIncome - inp.otherMonthlyDebts;
     var maxAllowedPITI = Math.max(0, Math.min(maxFrontPITI, maxPITIFromBack));
     var bindingRule = maxFrontPITI <= maxPITIFromBack ? 'front' : 'back';
 
@@ -802,10 +815,13 @@
     var backPctUsed = monthlyIncome>0 ? ((result.piti+inp.otherMonthlyDebts)/monthlyIncome*100) : 0;
 
     // precio máximo que el ingreso soporta (despeje lineal: PITI(precio) es lineal en precio)
+    var isFha = inp.loanType==='fha';
     var r = inp.interestRate/100/12;
     var n = Math.round(inp.loanTermYears*12);
     var amortFactor = n<=0 ? 0 : (r===0 ? 1/n : r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
-    var denom = (1-inp.downPaymentPct/100)*amortFactor + (inp.propertyTaxPct/100)/12;
+    var loanFactor = isFha ? (1-inp.downPaymentPct/100)*(1+FHA_UFMIP_PCT/100) : (1-inp.downPaymentPct/100);
+    var mipMonthlyFactor = isFha ? (1-inp.downPaymentPct/100)*(FHA_ANNUAL_MIP_PCT/100)/12 : 0;
+    var denom = loanFactor*amortFactor + mipMonthlyFactor + (inp.propertyTaxPct/100)/12;
     var maxPriceByIncome = denom>0 ? Math.max(0, (maxAllowedPITI - inp.insuranceAnnual/12 - inp.hoaMonthly) / denom) : 0;
 
     // precio máximo que el efectivo disponible soporta (down payment + closing costs)
@@ -817,7 +833,7 @@
 
     return {
       monthlyIncome: monthlyIncome, maxAllowedPITI: maxAllowedPITI, qualifies: qualifies, cushion: cushion,
-      frontPctUsed: frontPctUsed, backPctUsed: backPctUsed, bindingRule: bindingRule,
+      frontPctUsed: frontPctUsed, backPctUsed: backPctUsed, bindingRule: bindingRule, limits: limits, isFha: isFha,
       maxPriceByIncome: maxPriceByIncome, maxPriceByCash: maxPriceByCash,
       maxPrice: maxPrice, bindingConstraint: bindingConstraint
     };
@@ -831,22 +847,28 @@
       ? '<span class="chip good">✓ Calificas</span>'
       : '<span class="chip critical">⚠ No calificas con este ingreso</span>';
 
+    var frontMaxPct = qual.limits.front*100, backMaxPct = qual.limits.back*100;
     var statsHtml =
-      stat('Pago mensual de esta casa (PITI)', fmtUSD0.format(result.piti)) +
+      stat('Pago mensual de esta casa (PITI'+(result.isFha?'+MIP':'')+')', fmtUSD0.format(result.piti)) +
       stat('Máximo que tu ingreso permite', fmtUSD0.format(qual.maxAllowedPITI)) +
       stat(qual.cushion>=0?'Colchón mensual':'Te excedes por', fmtUSD0.format(Math.abs(qual.cushion))+'/mes', qual.cushion>=0?'pos':'neg') +
-      stat('% de tu ingreso en la casa', fmtPct(qual.frontPctUsed,1)+' (máx. 28%)', qual.frontPctUsed<=28?'pos':'neg') +
-      stat('% de tu ingreso en deudas totales', fmtPct(qual.backPctUsed,1)+' (máx. 36%)', qual.backPctUsed<=36?'pos':'neg');
+      stat('% de tu ingreso en la casa', fmtPct(qual.frontPctUsed,1)+' (máx. '+frontMaxPct.toFixed(0)+'%)', qual.frontPctUsed<=frontMaxPct?'pos':'neg') +
+      stat('% de tu ingreso en deudas totales', fmtPct(qual.backPctUsed,1)+' (máx. '+backMaxPct.toFixed(0)+'%)', qual.backPctUsed<=backMaxPct?'pos':'neg');
 
     var maxPriceNote = qual.bindingConstraint==='income'
       ? 'tu ingreso es lo que más te limita — con más down payment no comprarías una casa más cara, necesitarías ganar más o tener menos deudas.'
       : 'tu efectivo disponible es lo que más te limita — con más ingreso no comprarías una casa más cara, necesitarías más dinero para el down payment y cierre.';
 
+    var fhaNote = qual.isFha
+      ? '<p class="cf-note">FHA exige vivir en la propiedad como residencia principal al menos 1 año — encaja con vivirla el primer año y luego rentarla para comprar la siguiente. El pago mensual ya incluye el seguro hipotecario (MIP) obligatorio de FHA, que no se puede evitar aunque pongas más down payment.</p>'
+      : '';
+
     body.innerHTML =
       '<div class="hero-top" style="margin-bottom:14px;">'+chip+'</div>'+
       '<div class="cf-grid">'+statsHtml+'</div>'+
       '<p class="cf-note">Precio máximo de casa que podrías comprar hoy: <b style="font-family:var(--font-mono);color:var(--ink)">'+fmtUSD0.format(qual.maxPrice)+'</b> — '+maxPriceNote+'</p>'+
-      '<p class="cf-note">Estimado con reglas tradicionales de préstamo convencional (28% / 36% del ingreso bruto) — no es una pre-aprobación real; cada banco tiene sus propios límites y compensating factors.</p>';
+      fhaNote+
+      '<p class="cf-note">Estimado con reglas tradicionales de '+(qual.isFha?'FHA':'préstamo convencional')+' ('+frontMaxPct.toFixed(0)+'% / '+backMaxPct.toFixed(0)+'% del ingreso bruto) — no es una pre-aprobación real; cada banco tiene sus propios límites y compensating factors.</p>';
   }
 
   var RED_FLAG_YEARS = 7;
@@ -912,6 +934,7 @@
 
   function readInputs(){
     return {
+      loanType: loanType,
       goalMultiplier: parseFloat(els.goalMultiplier.value)||1,
       goalExactPrice: parseFloat(els.goalExactPrice.value)||0,
       availableCash: parseFloat(els.availableCash.value)||0,
@@ -940,9 +963,17 @@
     };
   }
 
+  // FHA: seguro hipotecario (MIP) obligatorio sin importar el down payment.
+  // Upfront (UFMIP) se financia dentro del préstamo; el anual se cobra mensual.
+  // Son las tasas típicas actuales — varían un poco según plazo y LTV exactos.
+  var FHA_UFMIP_PCT = 1.75, FHA_ANNUAL_MIP_PCT = 0.55;
+
   function calc(inp){
     var downPayment = inp.purchasePrice * inp.downPaymentPct/100;
-    var loanAmount = inp.purchasePrice - downPayment;
+    var baseLoanAmount = inp.purchasePrice - downPayment;
+    var isFha = inp.loanType==='fha';
+    var loanAmount = isFha ? baseLoanAmount * (1 + FHA_UFMIP_PCT/100) : baseLoanAmount;
+    var annualMIP = isFha ? baseLoanAmount * (FHA_ANNUAL_MIP_PCT/100) : 0;
     var closingCostsBuy = inp.purchasePrice * inp.closingCostBuyPct/100;
     var r = inp.interestRate/100/12;
     var n = Math.round(inp.loanTermYears*12);
@@ -959,7 +990,7 @@
       return Math.max(bal,0);
     }
 
-    var piti = M + inp.insuranceAnnual/12 + inp.hoaMonthly + (inp.propertyTaxPct/100*inp.purchasePrice)/12;
+    var piti = M + inp.insuranceAnnual/12 + inp.hoaMonthly + (inp.propertyTaxPct/100*inp.purchasePrice)/12 + annualMIP/12;
 
     // Remodelación: se paga en efectivo al comprar (no se financia), y solo
     // una parte de lo gastado se refleja en el valor de reventa (remodelRoiPct).
@@ -1048,6 +1079,7 @@
 
     return {
       downPayment: downPayment, loanAmount: loanAmount, closingCostsBuy: closingCostsBuy,
+      isFha: isFha, annualMIP: annualMIP,
       monthlyPI: M, piti: piti, rows: rows.slice(0, horizon), rowsFull: rows, horizon: horizon, calcCap: CALC_CAP, hitCap: hitCap,
       crossNominalYear: crossNominalYear, crossRealYear: crossRealYear,
       optimalYear: optimalYear, optimalAnnualizedReal: optimalYear!=null?bestVal:null
@@ -1380,6 +1412,23 @@
   }
   document.getElementById('mode-rent').addEventListener('click', function(){ setMode('rent'); });
   document.getElementById('mode-live').addEventListener('click', function(){ setMode('live'); });
+
+  function setLoanType(type){
+    loanType = type;
+    document.getElementById('loan-conventional-btn').classList.toggle('active', type==='conventional');
+    document.getElementById('loan-fha-btn').classList.toggle('active', type==='fha');
+    if (type==='fha'){
+      els.downPaymentPct.value = '3.5';
+      document.getElementById('loan-type-note').textContent = 'FHA permite desde 3.5% de down payment, pero exige seguro hipotecario (MIP) obligatorio y vivir en la propiedad como residencia principal al menos 1 año.';
+      document.getElementById('dti-rule-note').textContent = 'Estimado con reglas tradicionales de FHA: máximo 31% del ingreso para la casa, 43% del ingreso total incluyendo deudas — más flexible que un préstamo convencional.';
+    } else {
+      document.getElementById('loan-type-note').textContent = 'Down payment típico 20%+ para evitar seguro hipotecario privado (PMI, no modelado aquí).';
+      document.getElementById('dti-rule-note').textContent = 'Estimado con reglas tradicionales de préstamo convencional: máximo 28% del ingreso para la casa, 36% del ingreso total incluyendo deudas.';
+    }
+    update();
+  }
+  document.getElementById('loan-conventional-btn').addEventListener('click', function(){ setLoanType('conventional'); });
+  document.getElementById('loan-fha-btn').addEventListener('click', function(){ setLoanType('fha'); });
 
   function setGoalMode(mode){
     goalMode = mode;
