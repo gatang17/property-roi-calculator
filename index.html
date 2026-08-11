@@ -777,19 +777,36 @@
     var sellPct = (inp.realtorPct + inp.closingCostSellPct)/100;
     var totalInvested = result.downPayment + result.closingCostsBuy + inp.remodelBudget;
 
-    var rows = result.rowsFull.map(function(r){
+    var allRows = result.rowsFull.map(function(r){
       var profit = (saleValue - r.loanBalance - saleValue*sellPct) + r.cashFlowCum - totalInvested;
       return { year: r.year, profit: profit, positive: profit>=0 };
     });
 
-    var firstPositiveYear = null;
-    for (var i=0;i<rows.length;i++){ if (rows[i].positive){ firstPositiveYear = rows[i].year; break; } }
-    var displayHorizon = firstPositiveYear!=null ? Math.min(rows.length, firstPositiveYear+2) : Math.min(rows.length, 10);
-    displayHorizon = Math.max(displayHorizon, Math.min(rows.length, 5));
+    // El "mejor año" no siempre es el primero: si rentas y la renta cubre (o
+    // supera) los gastos, esperar suele mejorar la ganancia. Si vives en ella
+    // sin renta (FHA, flip), cada año que esperas solo suma intereses, taxes
+    // y seguro sin nada que lo compense — ahí el mejor año casi siempre es el
+    // primero permitido. En vez de asumir cuál caso es, se busca el máximo real.
+    var bestRow = allRows[0];
+    allRows.forEach(function(r){ if (r.profit > bestRow.profit) bestRow = r; });
+    var hitCap = bestRow.year >= result.calcCap - 1;
+
+    var firstYear = allRows[0], lastInWindow = allRows[Math.min(allRows.length-1, Math.max(bestRow.year+2, 4))];
+    var trendPerYear = (lastInWindow.year>firstYear.year) ? (lastInWindow.profit-firstYear.profit)/(lastInWindow.year-firstYear.year) : 0;
+
+    var displayHorizon = Math.min(allRows.length, Math.max(bestRow.year+2, 5));
+
+    // Presupuesto de remodelación necesario para que el valor suba hasta la
+    // meta de venta, SOLO con reparaciones (sin contar apreciación de mercado,
+    // que es más especulativa) — es la lógica de un flip: forzar el valor con
+    // arreglos, no apostar a que el mercado suba solo.
+    var valueGapNeeded = Math.max(0, saleValue - inp.purchasePrice);
+    var requiredRemodelBudget = inp.remodelRoiPct>0 ? valueGapNeeded/(inp.remodelRoiPct/100) : (valueGapNeeded>0 ? Infinity : 0);
 
     return {
       saleValue: saleValue, sellPct: sellPct, totalInvested: totalInvested,
-      rows: rows.slice(0, displayHorizon), firstPositiveYear: firstPositiveYear, calcCap: result.calcCap
+      rows: allRows.slice(0, displayHorizon), bestRow: bestRow, hitCap: hitCap, calcCap: result.calcCap,
+      trendPerYear: trendPerYear, requiredRemodelBudget: requiredRemodelBudget, valueGapNeeded: valueGapNeeded
     };
   }
 
@@ -892,43 +909,60 @@
       ? '<div class="red-flag">🚩 No te alcanza el dinero disponible para esta compra tal como está configurada — necesitas '+fmtUSD0.format(Math.abs(cushion))+' más (down payment + costos de cierre + remodelación).</div>'
       : '';
 
-    var topHtml;
-    if (goal.firstPositiveYear!=null){
-      topHtml =
-        '<div class="hero-top" style="margin-bottom:4px;">'+
-          '<div class="hero-top-main"><span class="hero-label">A partir de</span>'+
-            '<div class="hero-big">Año '+goal.firstPositiveYear+'</div>'+
-          '</div>'+
-          '<span class="chip good">✓ Ya da ganancia</span>'+
+    var best = goal.bestRow;
+    var chipCls = best.profit>=0 ? 'good' : 'critical';
+    var chipIcon = best.profit>=0 ? '✓' : '⚠';
+    var topHtml =
+      '<div class="hero-top" style="margin-bottom:4px;">'+
+        '<div class="hero-top-main"><span class="hero-label">Mejor momento para vender</span>'+
+          '<div class="hero-big">Año '+best.year+'</div>'+
         '</div>'+
-        '<div class="hero-sub">Vendiendo a '+fmtUSD0.format(goal.saleValue)+' en el año '+goal.firstPositiveYear+' o después, recuperas tu inversión y te queda ganancia — sin asumir ninguna subida de precio, solo con lo que ya sabes: cuánto pagarías, cuánto debes del préstamo, y cuánto gastas/cobras mientras la tienes.</div>';
+        '<span class="chip '+chipCls+'">'+chipIcon+' '+fmtUSDsigned(best.profit)+'</span>'+
+      '</div>';
+
+    var trendHtml;
+    if (Math.abs(goal.trendPerYear) < 50){
+      trendHtml = 'Vendiendo a '+fmtUSD0.format(goal.saleValue)+', la ganancia se mantiene bastante estable año con año — el momento importa poco aquí.';
+    } else if (goal.trendPerYear > 0){
+      trendHtml = 'Cada año que esperas después del año 1, la ganancia sube aproximadamente <b style="font-family:var(--font-mono)">'+fmtUSDsigned(goal.trendPerYear)+'/año</b> — normal cuando la renta cubre (o supera) los gastos: entre más esperas, más recuperas.';
     } else {
-      topHtml =
-        '<div class="hero-top" style="margin-bottom:4px;">'+
-          '<div class="hero-top-main"><span class="hero-label">A partir de</span>'+
-            '<div class="hero-big">—</div>'+
-          '</div>'+
-          '<span class="chip critical">⚠ Ni en '+goal.calcCap+' años</span>'+
-        '</div>'+
-        '<div class="hero-sub">Ni siquiera vendiendo a '+fmtUSD0.format(goal.saleValue)+' recuperas tu inversión dentro de '+goal.calcCap+' años — ese precio no alcanza a cubrir lo que pagaste más lo que gastas en tenerla. Sube el múltiplo/precio objetivo, o revisa tus costos mensuales.</div>';
+      trendHtml = 'Cada año que esperas, la ganancia baja aproximadamente <b style="font-family:var(--font-mono)">'+fmtUSDsigned(goal.trendPerYear)+'/año</b> — normal cuando no hay renta (vives en la casa o es un flip): solo estás pagando hipoteca, impuestos y seguro sin nada que lo compense, así que entre antes vendas, mejor.';
     }
+    var fhaHoldNote = inp.loanType==='fha' ? ' Con FHA no puedes vender antes del año 1 — debes vivir ahí como residencia principal ese tiempo mínimo.' : '';
+
+    var subHtml = '<div class="hero-sub">'+trendHtml+fhaHoldNote+'</div>';
 
     var redFlagHtml = '';
-    if (goal.firstPositiveYear==null){
-      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> ni en '+goal.calcCap+' años se recupera el dinero a este precio. La mayoría de los inversionistas no dejan dinero amarrado tanto tiempo esperando — este trato, tal como está, probablemente no vale la pena.</div>';
-    } else if (goal.firstPositiveYear > RED_FLAG_YEARS){
-      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> toma '+goal.firstPositiveYear+' años recuperar tu inversión a este precio — para la mayoría de los inversionistas, más de '+RED_FLAG_YEARS+' años amarrado en una sola propiedad es demasiado tiempo. Considera si vale la pena, o ajusta tu meta de venta.</div>';
+    if (best.profit<0){
+      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> ni en el mejor año ('+best.year+') recuperas tu inversión vendiendo a '+fmtUSD0.format(goal.saleValue)+'. Sube tu meta de venta, invierte menos en la compra, o revisa tus costos — tal como está, este trato pierde dinero.</div>';
+    } else if (goal.hitCap){
+      redFlagHtml = '<div class="red-flag">🚩 La ganancia seguía subiendo al llegar al límite de '+goal.calcCap+' años del modelo — con estos supuestos, esperar aún más podría convenir todavía más, pero eso es mucho tiempo con dinero amarrado; considéralo con cautela.</div>';
+    } else if (best.year > RED_FLAG_YEARS){
+      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> el mejor momento cae en el año '+best.year+' — para la mayoría de los inversionistas, más de '+RED_FLAG_YEARS+' años amarrado en una sola propiedad es demasiado tiempo. Considera si vale la pena, o ajusta tu meta.</div>';
+    }
+
+    var repairHtml = '';
+    if (goal.valueGapNeeded>0){
+      var reachable = isFinite(goal.requiredRemodelBudget);
+      var diff = reachable ? goal.requiredRemodelBudget - inp.remodelBudget : null;
+      repairHtml =
+        '<div class="cf-grid" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">'+
+          stat('Para llegar a tu meta necesitas invertir en reparaciones', reachable ? fmtUSD0.format(goal.requiredRemodelBudget) : 'No alcanza solo con reparar')+
+          stat('Presupuesto de remodelación planeado', fmtUSD0.format(inp.remodelBudget)) +
+          (reachable ? stat(diff<=0?'Te alcanza — sobran':'Te falta invertir', fmtUSD0.format(Math.abs(diff)), diff<=0?'pos':'neg') : '') +
+        '</div>'+
+        '<p class="cf-note">Esto asume que el valor sube <strong>solo por las reparaciones</strong> (no por apreciación del mercado, que es más incierta) — es la lógica de un flip: fuerzas el valor con arreglos en vez de apostar a que el mercado suba solo.</p>';
     }
 
     var tableRows = goal.rows.map(function(r){
-      var isHit = r.year===goal.firstPositiveYear;
+      var isHit = r.year===best.year;
       return '<tr'+(isHit?' class="row-hit"':'')+'>'+
         '<td>Año '+r.year+'</td>'+
-        '<td class="'+(r.profit>=0?'pos':'neg')+'">'+fmtUSDsigned(r.profit)+(isHit?'<span class="hit-chip">✓ ya conviene</span>':'')+'</td>'+
+        '<td class="'+(r.profit>=0?'pos':'neg')+'">'+fmtUSDsigned(r.profit)+(isHit?'<span class="hit-chip">★ mejor año</span>':'')+'</td>'+
       '</tr>';
     }).join('');
 
-    body.innerHTML = budgetHtml + budgetFlag + topHtml + redFlagHtml +
+    body.innerHTML = budgetHtml + budgetFlag + topHtml + subHtml + redFlagHtml + repairHtml +
       '<div class="goal-table-scroll"><table class="goal-table"><thead><tr><th>Año</th><th>Ganancia si vendes a '+fmtUSD0.format(goal.saleValue)+'</th></tr></thead><tbody>'+tableRows+'</tbody></table></div>';
   }
 
