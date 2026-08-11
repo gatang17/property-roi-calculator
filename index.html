@@ -786,15 +786,26 @@
     // supera) los gastos, esperar suele mejorar la ganancia. Si vives en ella
     // sin renta (FHA, flip), cada año que esperas solo suma intereses, taxes
     // y seguro sin nada que lo compense — ahí el mejor año casi siempre es el
-    // primero permitido. En vez de asumir cuál caso es, se busca el máximo real.
+    // primero permitido.
     var bestRow = allRows[0];
     allRows.forEach(function(r){ if (r.profit > bestRow.profit) bestRow = r; });
     var hitCap = bestRow.year >= result.calcCap - 1;
 
+    var firstProfitableYear = null;
+    for (var i=0;i<allRows.length;i++){ if (allRows[i].positive){ firstProfitableYear = allRows[i].year; break; } }
+
+    // Si la ganancia todavía sigue subiendo al llegar al límite del modelo
+    // (hitCap), "el mejor año" es un número sin sentido práctico — nadie
+    // planea esperar 40 años. Ahí lo útil es "¿desde cuándo ya me conviene?",
+    // no el máximo teórico. Si hay un pico real (la ganancia baja después de
+    // cierto año, típico sin renta), ese pico sí es la respuesta correcta.
+    var headline = (hitCap && firstProfitableYear!=null) ? allRows[firstProfitableYear-1] : bestRow;
+    var headlineIsThreshold = (hitCap && firstProfitableYear!=null);
+
     var firstYear = allRows[0], lastInWindow = allRows[Math.min(allRows.length-1, Math.max(bestRow.year+2, 4))];
     var trendPerYear = (lastInWindow.year>firstYear.year) ? (lastInWindow.profit-firstYear.profit)/(lastInWindow.year-firstYear.year) : 0;
 
-    var displayHorizon = Math.min(allRows.length, Math.max(bestRow.year+2, 5));
+    var displayHorizon = Math.min(allRows.length, Math.max(headline.year+4, 8), 15);
 
     // Presupuesto de remodelación necesario para que el valor suba hasta la
     // meta de venta, SOLO con reparaciones (sin contar apreciación de mercado,
@@ -805,7 +816,8 @@
 
     return {
       saleValue: saleValue, sellPct: sellPct, totalInvested: totalInvested,
-      rows: allRows.slice(0, displayHorizon), bestRow: bestRow, hitCap: hitCap, calcCap: result.calcCap,
+      rows: allRows.slice(0, displayHorizon), bestRow: bestRow, headline: headline,
+      headlineIsThreshold: headlineIsThreshold, hitCap: hitCap, calcCap: result.calcCap,
       trendPerYear: trendPerYear, requiredRemodelBudget: requiredRemodelBudget, valueGapNeeded: valueGapNeeded
     };
   }
@@ -909,22 +921,23 @@
       ? '<div class="red-flag">🚩 No te alcanza el dinero disponible para esta compra tal como está configurada — necesitas '+fmtUSD0.format(Math.abs(cushion))+' más (down payment + costos de cierre + remodelación).</div>'
       : '';
 
-    var best = goal.bestRow;
-    var chipCls = best.profit>=0 ? 'good' : 'critical';
-    var chipIcon = best.profit>=0 ? '✓' : '⚠';
+    var head = goal.headline;
+    var chipCls = head.profit>=0 ? 'good' : 'critical';
+    var chipIcon = head.profit>=0 ? '✓' : '⚠';
+    var headLabel = goal.headlineIsThreshold ? 'Ya te conviene desde' : 'Mejor momento para vender';
     var topHtml =
       '<div class="hero-top" style="margin-bottom:4px;">'+
-        '<div class="hero-top-main"><span class="hero-label">Mejor momento para vender</span>'+
-          '<div class="hero-big">Año '+best.year+'</div>'+
+        '<div class="hero-top-main"><span class="hero-label">'+headLabel+'</span>'+
+          '<div class="hero-big">Año '+head.year+'</div>'+
         '</div>'+
-        '<span class="chip '+chipCls+'">'+chipIcon+' '+fmtUSDsigned(best.profit)+'</span>'+
+        '<span class="chip '+chipCls+'">'+chipIcon+' '+fmtUSDsigned(head.profit)+'</span>'+
       '</div>';
 
     var trendHtml;
     if (Math.abs(goal.trendPerYear) < 50){
       trendHtml = 'Vendiendo a '+fmtUSD0.format(goal.saleValue)+', la ganancia se mantiene bastante estable año con año — el momento importa poco aquí.';
     } else if (goal.trendPerYear > 0){
-      trendHtml = 'Cada año que esperas después del año 1, la ganancia sube aproximadamente <b style="font-family:var(--font-mono)">'+fmtUSDsigned(goal.trendPerYear)+'/año</b> — normal cuando la renta cubre (o supera) los gastos: entre más esperas, más recuperas.';
+      trendHtml = 'Cada año que esperas, la ganancia sube aproximadamente <b style="font-family:var(--font-mono)">'+fmtUSDsigned(goal.trendPerYear)+'/año</b> — normal cuando la renta cubre (o supera) los gastos: entre más esperas, más recuperas. Por eso lo útil no es "espera al máximo", sino desde cuándo ya te conviene.';
     } else {
       trendHtml = 'Cada año que esperas, la ganancia baja aproximadamente <b style="font-family:var(--font-mono)">'+fmtUSDsigned(goal.trendPerYear)+'/año</b> — normal cuando no hay renta (vives en la casa o es un flip): solo estás pagando hipoteca, impuestos y seguro sin nada que lo compense, así que entre antes vendas, mejor.';
     }
@@ -933,12 +946,12 @@
     var subHtml = '<div class="hero-sub">'+trendHtml+fhaHoldNote+'</div>';
 
     var redFlagHtml = '';
-    if (best.profit<0){
-      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> ni en el mejor año ('+best.year+') recuperas tu inversión vendiendo a '+fmtUSD0.format(goal.saleValue)+'. Sube tu meta de venta, invierte menos en la compra, o revisa tus costos — tal como está, este trato pierde dinero.</div>';
-    } else if (goal.hitCap){
-      redFlagHtml = '<div class="red-flag">🚩 La ganancia seguía subiendo al llegar al límite de '+goal.calcCap+' años del modelo — con estos supuestos, esperar aún más podría convenir todavía más, pero eso es mucho tiempo con dinero amarrado; considéralo con cautela.</div>';
-    } else if (best.year > RED_FLAG_YEARS){
-      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> el mejor momento cae en el año '+best.year+' — para la mayoría de los inversionistas, más de '+RED_FLAG_YEARS+' años amarrado en una sola propiedad es demasiado tiempo. Considera si vale la pena, o ajusta tu meta.</div>';
+    if (goal.bestRow.profit<0){
+      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> ni en el mejor año ('+goal.bestRow.year+') recuperas tu inversión vendiendo a '+fmtUSD0.format(goal.saleValue)+'. Sube tu meta de venta, invierte menos en la compra, o revisa tus costos — tal como está, este trato pierde dinero.</div>';
+    } else if (goal.headlineIsThreshold){
+      redFlagHtml = '<div class="red-flag" style="border-color:var(--good);background:var(--good-bg);color:var(--ink)">💡 A partir del año '+head.year+' ya te conviene, y sigue mejorando cuanto más esperes — pero eso también es más tiempo con tu dinero amarrado en una sola propiedad. No hay un "máximo" real dentro de este modelo; decide tú hasta cuándo tiene sentido esperar.</div>';
+    } else if (head.year > RED_FLAG_YEARS){
+      redFlagHtml = '<div class="red-flag">🚩 <strong>Red flag:</strong> el mejor momento cae en el año '+head.year+' — para la mayoría de los inversionistas, más de '+RED_FLAG_YEARS+' años amarrado en una sola propiedad es demasiado tiempo. Considera si vale la pena, o ajusta tu meta.</div>';
     }
 
     var repairHtml = '';
@@ -955,10 +968,10 @@
     }
 
     var tableRows = goal.rows.map(function(r){
-      var isHit = r.year===best.year;
+      var isHit = r.year===head.year;
       return '<tr'+(isHit?' class="row-hit"':'')+'>'+
         '<td>Año '+r.year+'</td>'+
-        '<td class="'+(r.profit>=0?'pos':'neg')+'">'+fmtUSDsigned(r.profit)+(isHit?'<span class="hit-chip">★ mejor año</span>':'')+'</td>'+
+        '<td class="'+(r.profit>=0?'pos':'neg')+'">'+fmtUSDsigned(r.profit)+(isHit?'<span class="hit-chip">'+(goal.headlineIsThreshold?'✓ ya conviene':'★ mejor año')+'</span>':'')+'</td>'+
       '</tr>';
     }).join('');
 
